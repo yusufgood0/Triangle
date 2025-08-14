@@ -12,42 +12,99 @@ namespace Triangle
 {
     internal struct Triangle
     {
-        public Vector3 p1 { get; set; }
-        public Vector3 p2 { get; set; }
-        public Vector3 p3 { get; set; }
+        public Vector3 P1 { get; set; }
+        public Vector3 P2 { get; set; }
+        public Vector3 P3 { get; set; }
+        public Vector3 Average { get => (P1 + P2 + P3) / 3; }
         public Triangle(Vector3 p1, Vector3 p2, Vector3 p3)
         {
-            this.p1 = p1;
-            this.p2 = p2;
-            this.p3 = p3;
+            this.P1 = p1;
+            this.P2 = p2;
+            this.P3 = p3;
         }
 
-        static Color transparentColor = new Color(0, 0, 0, 255);
-        static Point errorPoint = new Point(-1, -1);
-        static float fov_scale;
-        static Point screenCenter;
-        static Point CachescreenSize;
-
+        static Color _transparentColor = new Color(0, 0, 0, 255);
+        static readonly Point _errorPoint = new Point(-1, -1);
+        static float _fov_scale;
+        static Point _screenCenter;
+        static Point _CachedscreenSize;
+        static Texture2D _texture;
+        static Color[] _pixelBuffer;
+        static TriangleBulkDraw _triangleBulkDraw;
+        public static void Initialize(SpriteBatch spritebatch, Point screenSize) // call once per frame
+        {
+            _screenCenter = new Point(screenSize.X / 2, screenSize.Y / 2);
+            _CachedscreenSize = screenSize;
+            _triangleBulkDraw = new TriangleBulkDraw(spritebatch, screenSize);
+        }
         public static void UpdateConstants(float FOV, Point screenSize) // call once per frame
         {
-            fov_scale = 1f / MathF.Tan(FOV / 2);
-            screenCenter = new Point(screenSize.X / 2, screenSize.Y / 2);
-            CachescreenSize = screenSize;
+            _fov_scale = 1f / MathF.Tan(FOV / 2);
         }
-
-        public void Draw(
+        public static unsafe void BulkDraw(
+            List<Triangle> triangles,
             SpriteBatch spriteBatch,
-            GraphicsDevice graphicsDevice,
             Color color,
             Vector3 cameraPosition,
             float pitch,
             float yaw
             )
         {
+            fixed (Triangle* trianglesPtr = triangles.ToArray())
+            {
+                for (int i = 0; i < triangles.Count; i++)
+                {
+                    if (
+                        !WorldPosToScreenPos(cameraPosition, pitch, yaw, trianglesPtr[i].P1, out Point p1) ||
+                        !WorldPosToScreenPos(cameraPosition, pitch, yaw, trianglesPtr[i].P2, out Point p2) ||
+                        !WorldPosToScreenPos(cameraPosition, pitch, yaw, trianglesPtr[i].P3, out Point p3)
+                        ) { return; }
+
+                    /* calculates a bounding box for the triangle */
+                    int xmin = Math.Max(Math.Min(Math.Min(p1.X, p2.X), p3.X), 0);
+                    int ymin = Math.Max(Math.Min(Math.Min(p1.Y, p2.Y), p3.Y), 0);
+                    int xmax = Math.Min(Math.Max(Math.Max(p1.X, p2.X), p3.X), _CachedscreenSize.X);
+                    int ymax = Math.Min(Math.Max(Math.Max(p1.Y, p2.Y), p3.Y), _CachedscreenSize.Y);
+
+                    int width = xmax - xmin;
+                    int height = ymax - ymin;
+
+                    int numOfPixels = width * height;
+                    if (numOfPixels < 1 || numOfPixels > 1000000) return;
+
+                    Byte[] data = new Byte[numOfPixels];
+                    //Array.Fill(data, Byte);
+                    fixed (Byte* dataPtr = data)
+                    {
+                        for (int y = 0; y < height; y++)
+                        {
+                            for (int x = 0; x < width; x++)
+                            {
+                                data[y * width + x] = IsPointInTriangle(new Point(x + xmin, y + ymin), p1, p2, p3) ? (Byte)255: (Byte)0;
+                            }
+                        }
+                    }
+                    _triangleBulkDraw.AddTriangle(
+                        new Rectangle(xmin, ymin, width, height),
+                        color,
+                        data
+                    );
+                }
+            }
+        }
+        public unsafe void Draw(
+            SpriteBatch spriteBatch,
+            Color color,
+            Vector3 cameraPosition,
+            float pitch,
+            float yaw,
+            int distance
+            )
+        {
             if (
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.p1, out Point p1) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.p2, out Point p2) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.p3, out Point p3)
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P1, out Point p1) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P2, out Point p2) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P3, out Point p3)
             ) { return; }
 
             /* calculates a bounding rectangle for the triangle */
@@ -61,35 +118,36 @@ namespace Triangle
 
             //if (xmax < 0 || xmin > CachescreenSize.X || ymax < 0 || ymin > CachescreenSize.Y) return;
 
-            if (width < 0 || height < 0) return;
+            //if (width < 0 || height < 0) return;
 
             int numOfPixels = width * height;
-            if (numOfPixels > 1000000) return;
-            Color[] data = new Color[numOfPixels];
-            Array.Fill(data, transparentColor);
-            for (int y = 0; y < height; y++)
+            if (numOfPixels < 0 || numOfPixels > 1000000) return;
+
+            _texture = new Texture2D(spriteBatch.GraphicsDevice, width, height);
+            _pixelBuffer = new Color[numOfPixels];
+
+
+            fixed (Color* dataPtr = _pixelBuffer)
             {
-                for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
                 {
-                    if (IsPointInTriangle(new Point(x + xmin, y + ymin), p1, p2, p3))
+                    for (int x = 0; x < width; x++)
                     {
-                        data[y * width + x] = Color.White;
+                        if (IsPointInTriangle(new Point(x + xmin, y + ymin), p1, p2, p3))
+                        {
+                            _pixelBuffer[y * width + x] = color;
+                        }
                     }
                 }
             }
-            using (Texture2D texture = new Texture2D(spriteBatch.GraphicsDevice, width, height))
-            {
-                texture.SetData(data);
 
-                spriteBatch.Begin();
-                spriteBatch.Draw(texture, new Rectangle(xmin, ymin, width, height), color);
-                spriteBatch.End();
-            }
-            //texture.SetData(data);
+            _texture.SetData(_pixelBuffer);
 
-
+            spriteBatch.Begin();
+            spriteBatch.Draw(_texture, new Rectangle(xmin, ymin, width, height), null, Color.White, 0, Vector2.Zero, 0, 1f / distance);
+            spriteBatch.End();
         }
-        bool IsPointInTriangle(Point P, Point A, Point B, Point C)
+        static bool IsPointInTriangle(Point P, Point A, Point B, Point C)
         {
             bool sign1 = Sign(P, A, B) < 0f;
             bool sign2 = Sign(P, B, C) < 0f;
@@ -98,12 +156,12 @@ namespace Triangle
             return (sign1 == sign2) && (sign2 == sign3);
         }
 
-        float Sign(Point p1, Point p2, Point p3)
+        static float Sign(Point p1, Point p2, Point p3)
         {
             return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y);
         }
 
-        public bool WorldPosToScreenPos(
+        public static bool WorldPosToScreenPos(
                 Vector3 cameraPosition,
                 float pitch,
                 float yaw,
@@ -114,11 +172,11 @@ namespace Triangle
             Vector3 relativePos = objectPosition - cameraPosition;
             Vector3 rotatedrelativePos = General.RotateVector(relativePos, yaw, pitch);
 
-            if (rotatedrelativePos.Z < 0) { screenPos = errorPoint; return false; } // Object is behind the camera, return null
+            if (rotatedrelativePos.Z < 0) { screenPos = _errorPoint; return false; } // Object is behind the camera, return null
 
             screenPos = new Point(
-                (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * fov_scale * screenCenter.X + screenCenter.X),
-                (int)((rotatedrelativePos.Y / rotatedrelativePos.Z) * fov_scale * screenCenter.Y + screenCenter.Y)
+                (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * _fov_scale * _screenCenter.X + _screenCenter.X),
+                (int)((rotatedrelativePos.Y / rotatedrelativePos.Z) * _fov_scale * _screenCenter.Y + _screenCenter.Y)
             );
 
             return true;
