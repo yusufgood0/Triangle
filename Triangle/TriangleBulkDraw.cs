@@ -12,34 +12,50 @@ namespace Triangle
 {
     internal class TriangleBulkDraw
     {
-        Byte[] _pixelBuffer = new Byte[3840*2160];
+        Color[] _pixelBuffer = new Color[Array.MaxLength];
         List<(Rectangle ScreenPos, Color Tint, int BufferPlacement)> _drawInfos = new List<(Rectangle screenPos, Color Tint, int BufferPlacement)>();
         int _CurrentBufferPlacement = 0;
         Texture2D _texture;
+        RenderTarget2D _renderTargetBuffer;
 
         public TriangleBulkDraw(SpriteBatch spriteBatch, Point screenSize)
         {
-            this._texture = new Texture2D(spriteBatch.GraphicsDevice, screenSize.X, screenSize.Y);
+            GraphicsDevice GraphicsDevice = spriteBatch.GraphicsDevice;
+            this._texture = new Texture2D(GraphicsDevice, screenSize.X, screenSize.Y);
+            _renderTargetBuffer = new RenderTarget2D(
+                GraphicsDevice,
+                320, // width
+                200, // height
+                false, // no mipmaps
+                SurfaceFormat.Color,
+                DepthFormat.None
+                );
         }
-        public void AddTriangle(Rectangle ScreenPos, Color Tint, Byte[] pixels)
+        public void AddTriangle(Rectangle ScreenPos, Color Tint, Color[] pixels)
         {
             _drawInfos.Add((ScreenPos, Tint, _CurrentBufferPlacement));
             Array.Copy(pixels, 0, _pixelBuffer, _CurrentBufferPlacement, pixels.Length);
+            _CurrentBufferPlacement += pixels.Length;
         }
-        public void ProcessAll(SpriteBatch spriteBatch)
+        public void ProcessAll(ref SpriteBatch spriteBatch)
         {
-            Color[] _pixelBufferColors = new Color[_pixelBuffer.Length];
-            int i = 0;
-            foreach (var num in _pixelBuffer)
-            {
-                int Int = (int)num;
-                _pixelBufferColors[i++] = new Color(num, num, num, num);
-            }
+            if (_drawInfos.Count == 0) return;
+
+            spriteBatch.Begin();
             foreach (var (ScreenPos, Tint, BufferPlacement) in _drawInfos)
             {
-                _texture.SetData(0, ScreenPos, _pixelBuffer, BufferPlacement, ScreenPos.Width * ScreenPos.Height);
-                spriteBatch.Draw(_texture, ScreenPos, ScreenPos, Tint, 0f, Vector2.Zero, SpriteEffects.None, 0f);
+                //_texture.SetData(0, ScreenPos, _pixelBuffer, BufferPlacement, ScreenPos.Width * ScreenPos.Height);
+                //_texture?.Dispose();
+                _texture = new Texture2D(spriteBatch.GraphicsDevice, ScreenPos.Width, ScreenPos.Height);
+                _texture.SetData(_pixelBuffer, BufferPlacement, ScreenPos.Width * ScreenPos.Height);
+                spriteBatch.Draw(_texture, ScreenPos, null, Tint, 0f, Vector2.Zero, SpriteEffects.None, 0.5f);
+
             }
+            spriteBatch.End();
+
+            _drawInfos.Clear();
+            _pixelBuffer = new Color[Array.MaxLength];
+            _CurrentBufferPlacement = 0;
         }
     }
 }

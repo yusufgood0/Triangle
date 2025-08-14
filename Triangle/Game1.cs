@@ -80,13 +80,15 @@ namespace Triangle
             // TODO: Add your drawing code here\
             //General.DrawObject(_spriteBatch, texture, screenSize, FOV);
             DateTime startTime = DateTime.Now;
-            foreach (Triangle triangle in Triangles)
-            {
-                int distanceSquared = 0;
-                int colorValue = 255 - distanceSquared;
-                triangle.Draw(_spriteBatch, new Color(colorValue, colorValue, colorValue, 255), _player.Center, _player._angle.Y, _player._angle.X, distanceSquared);
-            }
-            //Triangle.BulkDraw(Triangles, _spriteBatch, Color.White, _player.Center, _player._angle.Y, _player._angle.X);
+
+            //foreach (Triangle triangle in Triangles)
+            //{
+            //    int distanceSquared = 0;
+            //    int colorValue = 255 - distanceSquared;
+            //    triangle.Draw(_spriteBatch, Color.White, _player.Center, _player._angle.Y, _player._angle.X, 1);
+            //}
+
+            Triangle.BulkDraw(Triangles, ref _spriteBatch, Color.White, _player.Center, _player._angle.Y, _player._angle.X);
             Debug.WriteLine((DateTime.Now - startTime).Milliseconds);
             base.Draw(gameTime);
         }

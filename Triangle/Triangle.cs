@@ -43,7 +43,7 @@ namespace Triangle
         }
         public static unsafe void BulkDraw(
             List<Triangle> triangles,
-            SpriteBatch spriteBatch,
+            ref SpriteBatch spriteBatch,
             Color color,
             Vector3 cameraPosition,
             float pitch,
@@ -70,17 +70,24 @@ namespace Triangle
                     int height = ymax - ymin;
 
                     int numOfPixels = width * height;
-                    if (numOfPixels < 1 || numOfPixels > 1000000) return;
+                    if (width < 1 || width > 1000 || height < 1 || height > 1000) return;
 
-                    Byte[] data = new Byte[numOfPixels];
+                    Color[] data = new Color[numOfPixels];
                     //Array.Fill(data, Byte);
-                    fixed (Byte* dataPtr = data)
+                    fixed (Color* dataPtr = data)
                     {
                         for (int y = 0; y < height; y++)
                         {
                             for (int x = 0; x < width; x++)
                             {
-                                data[y * width + x] = IsPointInTriangle(new Point(x + xmin, y + ymin), p1, p2, p3) ? (Byte)255: (Byte)0;
+                                if (IsPointInTriangle(new Point(x + xmin, y + ymin), p1, p2, p3))
+                                {
+                                    dataPtr[y * width + x] = Color.White;
+                                }
+                                else
+                                {
+                                    dataPtr[y * width + x] = Color.Transparent;
+                                }
                             }
                         }
                     }
@@ -91,6 +98,7 @@ namespace Triangle
                     );
                 }
             }
+            _triangleBulkDraw.ProcessAll(ref spriteBatch);
         }
         public unsafe void Draw(
             SpriteBatch spriteBatch,
