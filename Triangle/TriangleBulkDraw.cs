@@ -16,20 +16,12 @@ namespace Triangle
         List<(Rectangle ScreenPos, Color Tint, int BufferPlacement)> _drawInfos = new List<(Rectangle screenPos, Color Tint, int BufferPlacement)>();
         int _CurrentBufferPlacement = 0;
         Texture2D _texture;
-        RenderTarget2D _renderTargetBuffer;
 
         public TriangleBulkDraw(SpriteBatch spriteBatch, Point screenSize)
         {
             GraphicsDevice GraphicsDevice = spriteBatch.GraphicsDevice;
             this._texture = new Texture2D(GraphicsDevice, screenSize.X, screenSize.Y);
-            _renderTargetBuffer = new RenderTarget2D(
-                GraphicsDevice,
-                320, // width
-                200, // height
-                false, // no mipmaps
-                SurfaceFormat.Color,
-                DepthFormat.None
-                );
+            
         }
         public void AddTriangle(Rectangle ScreenPos, Color Tint, Color[] pixels)
         {

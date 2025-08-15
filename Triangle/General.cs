@@ -16,6 +16,16 @@ namespace Triangle
     internal class General
     {
         static Stopwatch _doubleClickTimer = new();
+        public static int min3(int a, int b, int c)
+        {
+            int t = (a < b) ? a : b;
+            return (t < c) ? t : c;
+        }
+        public static int max3(int a, int b, int c)
+        {
+            int t = (a > b) ? a : b;
+            return (t > c) ? t : c;
+        }
         public static Color Divide(Color color, float num) => new Color(color.R / num, color.G / num, color.B / num);
         public static Color Multiply(Color color, float num) => new Color(color.R * num, color.G * num, color.B * num);
 
