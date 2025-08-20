@@ -82,14 +82,14 @@ namespace Triangle
         public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
         {
             // Yaw rotation (around Y axis) // first for fps feel
-            float cosYaw = (float)Math.Cos(yaw);
-            float sinYaw = (float)Math.Sin(yaw);
+            float cosYaw = MathF.Cos(yaw);
+            float sinYaw = MathF.Sin(yaw);
             float x1 = vector.X * cosYaw - vector.Z * sinYaw;
             float z1 = vector.X * sinYaw + vector.Z * cosYaw;
 
             // Pitch rotation (around X axis)
-            float cosPitch = (float)Math.Cos(pitch);
-            float sinPitch = (float)Math.Sin(pitch);
+            float cosPitch = MathF.Cos(pitch);
+            float sinPitch = MathF.Sin(pitch);
             float y1 = vector.Y * cosPitch - z1 * sinPitch;
             float z2 = vector.Y * sinPitch + z1 * cosPitch;
 

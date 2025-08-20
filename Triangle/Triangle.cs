@@ -31,77 +31,16 @@ namespace Triangle
         static Point _CachedscreenSize;
         static Texture2D _texture;
         static Color[] _pixelBuffer;
-        static TriangleBulkDraw _triangleBulkDraw;
         public static void Initialize(SpriteBatch spritebatch, Point screenSize) // call once per frame
         {
             _screenCenter = new Point(screenSize.X / 2, screenSize.Y / 2);
             _CachedscreenSize = screenSize;
-            _triangleBulkDraw = new TriangleBulkDraw(spritebatch, screenSize);
             _texture = new Texture2D(spritebatch.GraphicsDevice, 1, 1);
             _texture.SetData(new Color[1] { Color.White });
         }
         public static void UpdateConstants(float FOV, Point screenSize) // call once per frame
         {
             _fov_scale = 1f / MathF.Tan(FOV / 2);
-        }
-        public static unsafe void BulkDraw(
-            List<Triangle> triangles,
-            ref SpriteBatch spriteBatch,
-            Color color,
-            Vector3 cameraPosition,
-            float pitch,
-            float yaw
-            )
-        {
-            fixed (Triangle* trianglesPtr = triangles.ToArray())
-            {
-                for (int i = 0; i < triangles.Count; i++)
-                {
-                    if (
-                        !WorldPosToScreenPos(cameraPosition, pitch, yaw, trianglesPtr[i].P1, out Point p1) ||
-                        !WorldPosToScreenPos(cameraPosition, pitch, yaw, trianglesPtr[i].P2, out Point p2) ||
-                        !WorldPosToScreenPos(cameraPosition, pitch, yaw, trianglesPtr[i].P3, out Point p3)
-                        ) { return; }
-
-                    /* calculates a bounding box for the triangle */
-                    int xmin = Math.Max(Math.Min(Math.Min(p1.X, p2.X), p3.X), 0);
-                    int ymin = Math.Max(Math.Min(Math.Min(p1.Y, p2.Y), p3.Y), 0);
-                    int xmax = Math.Min(Math.Max(Math.Max(p1.X, p2.X), p3.X), _CachedscreenSize.X);
-                    int ymax = Math.Min(Math.Max(Math.Max(p1.Y, p2.Y), p3.Y), _CachedscreenSize.Y);
-
-                    int width = xmax - xmin;
-                    int height = ymax - ymin;
-
-                    int numOfPixels = width * height;
-                    if (width < 1 || width > 1000 || height < 1 || height > 1000) continue;
-                    //if (numOfPixels < 0 || numOfPixels > 1000000) continue;
-                    Color[] data = new Color[numOfPixels];
-                    //Array.Fill(data, Byte);
-                    fixed (Color* dataPtr = data)
-                    {
-                        for (int y = 0; y < height; y++)
-                        {
-                            for (int x = 0; x < width; x++)
-                            {
-                                if (IsPointInTriangle(x + xmin, y + ymin, p1, p2, p3))
-                                {
-                                    dataPtr[y * width + x] = Color.White;
-                                }
-                                else
-                                {
-                                    dataPtr[y * width + x] = Color.Transparent;
-                                }
-                            }
-                        }
-                    }
-                    _triangleBulkDraw.AddTriangle(
-                        new Rectangle(xmin, ymin, width, height),
-                        color,
-                        data
-                    );
-                }
-            }
-            _triangleBulkDraw.ProcessAll(ref spriteBatch);
         }
         public unsafe void Draw(
             SpriteBatch spriteBatch,
@@ -138,13 +77,17 @@ namespace Triangle
             _pixelBuffer = new Color[numOfPixels];
 
 
+            int BYminusCY = p2.Y - p3.Y;
+            int AXminusCX = p1.X - p3.X;
+            int CXminusBX = p3.X - p2.X;
+
             fixed (Color* dataPtr = _pixelBuffer)
             {
                 for (int y = 0; y < height; y++)
                 {
                     for (int x = 0; x < width; x++)
                     {
-                        if (IsPointInTriangle(x + xmin, y + ymin, p1, p2, p3))
+                        if (IsPointInTriangle(x + xmin, y + ymin, p1, p2, p3, BYminusCY, AXminusCX, CXminusBX))
                         {
                             _pixelBuffer[y * width + x] = color;
                         }
@@ -173,6 +116,8 @@ namespace Triangle
             !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P3, out Point p3)
             ) { return; }
 
+            //if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles
+
             /* calculates a bounding rectangle for the triangle */
             int xmin = Math.Max(General.min3(p1.X, p2.X, p3.X), 0);
             int ymin = Math.Max(General.min3(p1.Y, p2.Y, p3.Y), 0);
@@ -182,89 +127,57 @@ namespace Triangle
             int width = xmax - xmin;
             int height = ymax - ymin;
 
-            if (width < 1 || height < 1 ) return;
+            if (width < 1 || height < 1) return;
+
+
+            int BYminusCY = p2.Y - p3.Y;
+            int AXminusCX = p1.X - p3.X;
+            int CXminusBX = p3.X - p2.X;
 
             fixed (Color* screenBufferColorPtr = screenBuffer.Pixels)
-            fixed (int* screenBufferLayerPtr = screenBuffer.Layer)
-                for (int y = 0; y < height; y++)
+            fixed (int* screenBufferDistancePtr = screenBuffer.Distance)
+                for (int y = ymin; y < ymax; y++)
                 {
-                    for (int x = 0; x < width; x++)
+                    int yTimesWidth = y * _CachedscreenSize.X;
+                    for (int x = xmin; x < xmax; x++)
                     {
-                        int currentpx = x + xmin;
-                        int currentpy = y + ymin;
-                        int index = currentpy * _CachedscreenSize.X + currentpx;
+                        int index = yTimesWidth + x;
 
-                        if (distance < screenBufferLayerPtr[index] && IsPointInTriangle(currentpx, currentpy, p1, p2, p3))
+                        if (distance <= screenBufferDistancePtr[index] && IsPointInTriangle(x, y, p1, p2, p3, BYminusCY, AXminusCX, CXminusBX))
                         {
                             screenBufferColorPtr[index] = color;
-                            screenBufferLayerPtr[index] = distance;
+                            screenBufferDistancePtr[index] = distance;
                         }
                     }
                 }
         }
-        public unsafe void DirectDraw(
-            ref SpriteBatch spriteBatch,
-            Color color,
-            Vector3 cameraPosition,
-            float pitch,
-            float yaw,
-            int distance
-            )
+        static bool IsPointInTriangle(int px, int py, Point a, Point b, Point c, int BYminusCY, int AXminusCX, int CXminusBX)
         {
-            if (
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P1, out Point p1) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P2, out Point p2) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P3, out Point p3)
-            ) { return; }
-
-            /* calculates a bounding rectangle for the triangle */
-            int xmin = Math.Max(Math.Min(Math.Min(p1.X, p2.X), p3.X), 0);
-            int ymin = Math.Max(Math.Min(Math.Min(p1.Y, p2.Y), p3.Y), 0);
-            int xmax = Math.Min(Math.Max(Math.Max(p1.X, p2.X), p3.X), _CachedscreenSize.X);
-            int ymax = Math.Min(Math.Max(Math.Max(p1.Y, p2.Y), p3.Y), _CachedscreenSize.Y);
-
-            int width = xmax - xmin + 1;
-            int height = ymax - ymin + 1;
-
-            //if (xmax < 0 || xmin > CachescreenSize.X || ymax < 0 || ymin > CachescreenSize.Y) return;
-
-            //if (width < 0 || height < 0) return;
-
-            int numOfPixels = width * height;
-            if (numOfPixels < 0 || numOfPixels > 1000000) return;
-
-            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int currentpx = x + xmin;
-                    int currentpy = y + ymin;
-                    if (IsPointInTriangle(currentpx, currentpy, p1, p2, p3))
-                    {
-                        spriteBatch.Draw(_texture, new Rectangle(currentpx, currentpy, 1, 1), null, color, 0, Vector2.Zero, 0, 1f / distance);
-                    }
-                }
-            }
-            spriteBatch.End();
-        }
-        static bool IsPointInTriangle(int px, int py, Point a, Point b, Point c)
-        {
-            int denom = (b.Y - c.Y) * (a.X - c.X) + (c.X - b.X) * (a.Y - c.Y);
-            int w1 = (b.Y - c.Y) * (px - c.X) + (c.X - b.X) * (py - c.Y);
-            int w2 = (c.Y - a.Y) * (px - c.X) + (a.X - c.X) * (py - c.Y);
+            int PXminusCX = px - c.X;
+            int PYminusCY = py - c.Y;
+            int denom = BYminusCY * AXminusCX + CXminusBX * (a.Y - c.Y);
+            int w1 = BYminusCY * PXminusCX + CXminusBX * PYminusCY;
+            int w2 = (c.Y - a.Y) * PXminusCX + AXminusCX * PYminusCY;
             int w3 = denom - w1 - w2;
 
-            if (denom < 0) { w1 = -w1; w2 = -w2; w3 = -w3; denom = -denom; }
+            //if (denom < 0) { w1 = -w1; w2 = -w2; w3 = -w3; denom = -denom; }
 
             return w1 >= 0 && w2 >= 0 && w3 >= 0;
         }
-
-        static float Sign(Point p1, Point p2, Point p3)
+        private static bool IsBackFacing(Point a, Point b, Point c)
         {
-            return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y);
-        }
+            // Compute the edge vectors
+            int edge1X = b.X - a.X;
+            int edge1Y = b.Y - a.Y;
+            int edge2X = c.X - a.X;
+            int edge2Y = c.Y - a.Y;
 
+            // Compute the cross product (determines winding order)
+            int crossProduct = (edge1X * edge2Y) - (edge1Y * edge2X);
+
+            // If cross product is negative, it's back-facing (assuming CCW winding)
+            return crossProduct <= 0;
+        }
         public static bool WorldPosToScreenPos(
                 Vector3 cameraPosition,
                 float pitch,
@@ -276,7 +189,7 @@ namespace Triangle
             Vector3 relativePos = objectPosition - cameraPosition;
             Vector3 rotatedrelativePos = General.RotateVector(relativePos, yaw, pitch);
 
-            if (rotatedrelativePos.Z < 0) { screenPos = _errorPoint; return false; } // Object is behind the camera, return null
+            if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return null
 
             screenPos = new Point(
                 (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * _fov_scale * _screenCenter.X + _screenCenter.X),
@@ -285,5 +198,39 @@ namespace Triangle
 
             return true;
         }
+        public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
+        {
+            lightDirection.Normalize();
+
+            Vector3 side1 = P1 - P2;
+            Vector3 side2 = P1 - P3;
+            Vector3 normalDir = Vector3.Cross(side1, side2);
+            normalDir.Normalize();
+
+            // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
+            float dotProduct = Vector3.Dot(normalDir, lightDirection);
+
+            // mix colors based on the difference in rays
+            return Color.Lerp(triangleColor, lightColor, dotProduct);
+        }
+        public unsafe static Triangle[] ModelConstructor((int, int, int)[] Triangles, Vector3[] Vertices)
+        {
+            Triangle[] ProcessedTriangles = new Triangle[Triangles.Length];
+            fixed (Triangle* processedTrianglesPtr = ProcessedTriangles)
+            fixed ((int, int, int)* trianglesPtr = Triangles)
+            fixed (Vector3* verticesPtr = Vertices)
+            {
+                // Process each triangle and construct Triangle objects
+                for (int i = 0; i < Triangles.Length; i++)
+                {
+                    processedTrianglesPtr[i] = new Triangle(
+                        verticesPtr[trianglesPtr[i].Item1],
+                        verticesPtr[trianglesPtr[i].Item2],
+                        verticesPtr[trianglesPtr[i].Item3]
+                    );
+                }
+            }
+            return ProcessedTriangles;
+        } // constructs triangles out of models, takes in vertices and triangles as indeces
     }
 }
