@@ -16,7 +16,7 @@ namespace Triangle
         private SpriteBatch _spriteBatch;
         private Player _player;
         private Camera _camera;
-        private bool PreviousIsMouseVisible = false;
+        private bool _previousIsMouseVisible = false;
         private Point screenSize = new Point(800, 800);
         private int pixelSize = 4;
         private float FOV = MathHelper.Pi / 2;
@@ -30,7 +30,8 @@ namespace Triangle
         private FramesPerSecondTimer framesPerSecondTimer = new();
         private seedMapper seedMapper;
         private const int MapCellSize = 40;
-        Random rnd = new Random();
+        private List<Projectile> projectiles = new List<Projectile>();
+        private Random rnd = new Random();
 
         //private BoundingBox;
 
@@ -57,7 +58,7 @@ namespace Triangle
 
 
             /* randomly places many orbs around for testing */
-            for (int i = 0; i < 1750; i++)
+            for (int i = 0; i < 1250; i++)
             {
                 int quality = rnd.Next(5, 10);
                 Models.Add(new Sphere(new Vector3(rnd.Next(-1000, 1000), rnd.Next(-1000, 1000), rnd.Next(-1000, 1000)), quality * 5, quality));
@@ -119,7 +120,7 @@ namespace Triangle
 
             IsMouseVisible = !IsActive;
 
-            _player.SafeControlAngleWithMouse(PreviousIsMouseVisible, IsMouseVisible, screenSize, 0.01f);
+            _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, screenSize, 0.01f);
             _player.Update(_keyboardState);
             _player.Move(_player.Speed);
 
@@ -150,7 +151,7 @@ namespace Triangle
             }
 
             _previousKeyboardState = _keyboardState;
-            PreviousIsMouseVisible = IsMouseVisible;
+            _previousIsMouseVisible = IsMouseVisible;
             base.Update(gameTime);
         }
 

@@ -28,7 +28,7 @@ namespace Triangle
         {
             _velocity = DirVector;
             _position = Position;
-            _color = Color.Red;
+            _color = Color.DarkOrange;
         } 
     }
 }
