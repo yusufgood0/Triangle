@@ -15,25 +15,26 @@ namespace Triangle
     internal class Player
     {
         static Texture2D _texture;
-        static int sizeX = 30;
-        static int sizeY = 70;
-        static int sizeZ = 30;
+        public static int sizeX = 30;
+        public static int sizeY = 140;
+        public static int sizeZ = 30;
         Vector3 _position = new();
         Vector3 _speed = new();
         public Vector2 _angle = Vector2.Zero;
         private static readonly string _saveDirectory = Path.Combine(Environment.CurrentDirectory, "PlayerInfo", "PlayerPos.txt");
-
+        public Camera PlayerCamera { get; set; }
         public enum GameMode
         {
             Survival,
             Creative
         }
 
-        GameMode gameMode = GameMode.Creative;
+        GameMode gameMode = GameMode.Survival;
 
-        public Player(Vector3 position)
+        public Player(Vector3 position, in Camera camera)
         {
             _position = position;
+            PlayerCamera = camera;
             TryPullPositionFromArchive();
         }
         public static void SetTexture(Texture2D texture)
@@ -96,11 +97,11 @@ namespace Triangle
             }
         }
         */
-        public void update(KeyboardState keyboardState)
+        public void Update(KeyboardState keyboardState)
         {
             if (IsSurvival)
             {
-                _speed.Y += 0.5f;
+                _speed.Y += 0.3f;
             }
             Vector2 normalizedSpeed = new();
             MoveKeyPressed(keyboardState);
@@ -109,18 +110,45 @@ namespace Triangle
             _speed.X += normalizedSpeed.X;
             _speed.Z += normalizedSpeed.Y;
 
-            _speed.X *= .75f;
-            _speed.Y *= .95f;
-            _speed.Z *= .75f;
+            _speed.X *= .90f;
+            _speed.Y *= .99f;
+            _speed.Z *= .90f;
+            if (_speed.Y > 10)
+            {
+                _speed += dirVector * (_speed.Y / 30);
+            }
+        }
+        public void Dash()
+        {
+            _speed += dirVector * 40;
+        }
+        public void HitGround(KeyboardState keyBoardState)
+        {
+            if (_speed.Y > 10 && keyBoardState.IsKeyUp(Keys.LeftShift))
+            {
+                _speed.Y = -_speed.Y * 0.4f;
+            }
+            else
+            {
+                _speed.Y = 0;
+            }
+            _speed.X *= .70f;
+            _speed.Z *= .70f;
 
         }
         public void Jump()
         {
-            _speed.Y -= 10;
+            _speed.Y -= 30;
+        }
+        public void SetPosition(Vector3 vector)
+        {
+            _position = vector;
+            PlayerCamera.Position = Center;
         }
         public void Move(Vector3 vector)
         {
             _position += vector;
+            PlayerCamera.Position = Center;
         }
         enum Direction
         {
@@ -133,42 +161,37 @@ namespace Triangle
         }
         public void MoveKeyPressed(KeyboardState keyboardState)
         {
-            Vector2 speedChange = new();
+            Vector3 movement = Vector3.Zero;
 
-            if (keyboardState.IsKeyDown((Keys)Direction.FORWARD))
+            var dirVector = this.dirVector;
+            dirVector.Y = 0;
+            dirVector.Normalize();
+            Vector3 RightDirection = Vector3.Cross(dirVector, PlayerCamera.Up);
+
+            if (keyboardState.IsKeyDown(Keys.W))
+                movement += dirVector;
+            if (keyboardState.IsKeyDown(Keys.S))
+                movement -= dirVector;
+            if (keyboardState.IsKeyDown(Keys.A))
+                movement -= RightDirection;
+            if (keyboardState.IsKeyDown(Keys.D))
+                movement += RightDirection;
+
+            // Normalize if moving diagonally
+            if (movement != Vector3.Zero)
             {
-                speedChange += General.AngleToVector2(_angle.X);
+                movement.Normalize();
             }
-            if (keyboardState.IsKeyDown((Keys)Direction.BACKWARDS))
-            {
-                speedChange -= General.AngleToVector2(_angle.X);
-            }
-            if (keyboardState.IsKeyDown((Keys)Direction.LEFT))
-            {
-                speedChange += General.AngleToVector2(_angle.X - (float)Math.PI / 2);
-            }
-            if (keyboardState.IsKeyDown((Keys)Direction.RIGHT))
-            {
-                speedChange += General.AngleToVector2(_angle.X + (float)Math.PI / 2);
-            }
+
             if (IsCreative)
             {
-                if (keyboardState.IsKeyDown((Keys)Direction.DOWN))
-                {
-                    _speed.Y += 1;
-                }
-                if (keyboardState.IsKeyDown((Keys)Direction.UP))
-                {
-                    _speed.Y -= 1;
-                }
+                if (keyboardState.IsKeyDown(Keys.Space))
+                    movement.Y -= 1;
+                if (keyboardState.IsKeyDown(Keys.LeftShift))
+                    movement.Y += 1;
             }
 
-            if (speedChange != new Vector2(0, 0))
-            {
-                speedChange.Normalize();
-                _speed.X += speedChange.X * 1;
-                _speed.Z += speedChange.Y * 1;
-            }
+            _speed += movement * 2.5f;
         }
         public void SavePosition()
         {
@@ -216,6 +239,9 @@ namespace Triangle
         {
             _angle.X += (Mouse.GetState().X - screenSize.X / 2) * sensitivity;
             _angle.Y += (Mouse.GetState().Y - screenSize.Y / 2) * sensitivity;
+            _angle.Y = MathHelper.Clamp(_angle.Y, -MathHelper.PiOver2 + 0.1f, MathHelper.PiOver2 - 0.1f);
+            PlayerCamera.SetRotation(_angle.X, _angle.Y);
+
         }
         public bool IsSurvival { get => gameMode == GameMode.Survival;}
         public bool IsCreative { get => gameMode == GameMode.Creative;}

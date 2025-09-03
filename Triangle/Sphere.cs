@@ -10,12 +10,27 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Triangle
 {
-    internal struct Sphere
+    internal struct Sphere : Model
     {
+        BoundingBox Model.BoundingBox => new(Center - new Vector3(Radius), Center + new Vector3(Radius));
+        Shape[] Model.Shapes => GetTriangles;
+
         List<(int, int, int)> Triangles;
         List<Vector3> Vertices;
+        public Vector3 Center { get; private set; }
+        public float Radius { get; private set; }
+        public void Move(Vector3 offset)
+        {
+            Center += offset;
+            for (int i = 0; i < Vertices.Count; i++)
+            {
+                Vertices[i] += offset;
+            }
+        }
         public Sphere(Vector3 center, float radius, int quality)
         {
+            this.Radius = radius;
+            this.Center = center;
             float pitch = MathF.PI / 2;
             float yaw = 0;
 
@@ -95,7 +110,7 @@ namespace Triangle
                 Triangles.Add((bottomVertexIndex, lastRowStart + next, lastRowStart + i));
             }
         }
-        public Triangle[] GetTriangles
+        public Shape[] GetTriangles
         {
             get => Triangle.ModelConstructor(Triangles.ToArray(), Vertices.ToArray());
         }

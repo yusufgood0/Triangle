@@ -1,16 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 
 namespace Triangle
 {
-    internal struct Cube
+    internal struct Cube : Model
     {
+        BoundingBox Model.BoundingBox => new(Position, BRB);
+        Shape[] Model.Shapes => CreateSquares();
         static (int, int, int)[] Triangles = new (int, int, int)[]
             {
                 (0, 1, 2), (1, 3, 2), // Front
@@ -20,34 +16,50 @@ namespace Triangle
                 (0, 2, 4), (2, 6, 4), // Left
                 (5, 3, 1), (5, 7, 3)  // Right
             };
-        Vector3[] Vertices;
+        static (int a, int b, int c, int d)[] Squares = new (int, int, int, int)[]
+            {
+                (0, 1, 3, 2), // Front face (from triangles (0,1,2) and (1,3,2))
+                (4, 5, 7, 6), // Back face (from triangles (4,5,6) and (5,7,6))
+                (0, 1, 5, 4), // Top face (from triangles (0,1,4) and (1,5,4))
+                (2, 3, 7, 6), // Bottom face (from triangles (2,3,6) and (3,7,6))
+                (0, 2, 6, 4), // Left face (from triangles (0,2,4) and (2,6,4))
+                (1, 3, 7, 5)  // Right face (from triangles (1,3,5) and (3,7,5))
+            };
+        public Shape[] _cachedSquares = null;
+        float xSize;
+        float ySize;
+        float zSize;
+        public Vector3 Position { get => TLF; set => TLF = value; }
+        public Vector3 TLF;
+        public Vector3 TRF { get => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z); }
+        public Vector3 BLF { get => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z); }
+        public Vector3 BRF { get => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z); }
+        public Vector3 TLB { get => new Vector3(TLF.X, TLF.Y, TLF.Z + zSize); }
+        public Vector3 TRB { get => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize); }
+        public Vector3 BLB { get => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize); }
+        public Vector3 BRB { get => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize); }
         public Cube(Vector3 TLF, float xSize, float ySize, float zSize)
         {
-            Vector3 TRF = new Vector3(TLF.X + xSize, TLF.Y, TLF.Z);
-            Vector3 BLF = new Vector3(TLF.X, TLF.Y + ySize, TLF.Z);
-            Vector3 BRF = new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z);
-            Vector3 TLB = new Vector3(TLF.X, TLF.Y, TLF.Z + zSize);
-            Vector3 TRB = new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize);
-            Vector3 BLB = new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize);
-            Vector3 BRB = new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize);
-            Vertices = new Vector3[]
+            this.TLF = TLF;
+            this.xSize = xSize;
+            this.ySize = ySize;
+            this.zSize = zSize;
+        }
+        public Shape[] GetTriangles
+        {
+            get => Triangle.ModelConstructor(Triangles, new Vector3[]
             {
                 TLF, TRF, BLF, BRF,
-                TLB, TRB, BLB, BRB
-            };
+                TLB, TRB, BLB, BRB 
+            }); 
         }
-        public Triangle[] GetTriangles
+        public Vector3 Center
         {
-            get => Triangle.ModelConstructor(Triangles, Vertices);
+            get => new Vector3(Position.X + xSize/2, Position.Y + ySize / 2, Position.Z + zSize / 2);
         }
-        public Vector3 Average()
+        public Vector3 Opposite
         {
-            Vector3 sum = Vector3.Zero;
-            foreach (Vector3 vertex in Vertices)
-            {
-                sum += vertex;
-            }
-            return (sum / 8);
+            get => new Vector3(Position.X + xSize, Position.Y + ySize, Position.Z + zSize);
         }
         public void DrawAsWhole(
             ref TextureBuffer screenBuffer,
@@ -58,10 +70,10 @@ namespace Triangle
             int distance
             )
         {
-            foreach (Triangle triangle in GetTriangles)
+            foreach (Square square in CreateSquares())
             {
                 // Draw each triangle in the square
-                triangle.Draw(
+                square.Draw(
                     ref screenBuffer,
                     color,
                     cameraPosition,
@@ -71,22 +83,32 @@ namespace Triangle
                 );
             }
         }
-        public unsafe Square[] getSquares()
+        public Shape[] CreateSquares()
         {
-            fixed (Triangle* GetTrianglesPtr = GetTriangles)
+            Vector3[] _vertices = new Vector3[]
             {
-                // Create an array of squares from the triangles
-                return new Square[]
+                TLF, TRF, BLF, BRF,
+                TLB, TRB, BLB, BRB
+            };
+            if (_cachedSquares == null)
+            {
+                _cachedSquares = new Shape[6];
+                for (int i = 0; i < 6; i++)
                 {
-                    new Square(GetTrianglesPtr[0], GetTrianglesPtr[1]),
-                    new Square(GetTrianglesPtr[2], GetTrianglesPtr[3]),
-                    new Square(GetTrianglesPtr[4], GetTrianglesPtr[5]),
-                    new Square(GetTrianglesPtr[6], GetTrianglesPtr[7]),
-                    new Square(GetTrianglesPtr[8], GetTrianglesPtr[9]),
-                    new Square(GetTrianglesPtr[10], GetTrianglesPtr[11])
-                };
+                    ref var squareDef = ref Squares[i];
+                    _cachedSquares[i] = new Square(
+                        _vertices[squareDef.a],
+                        _vertices[squareDef.b],
+                        _vertices[squareDef.c],
+                        _vertices[squareDef.d]
+                    );
+                }
             }
-
+            return _cachedSquares;
+        }
+        public void DiscardSquares()
+        {
+            _cachedSquares = null;
         }
     }
 }

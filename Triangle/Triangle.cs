@@ -11,8 +11,9 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Triangle
 {
-    internal struct Triangle
+    internal struct Triangle : Shape
     {
+        Vector3 Shape.Position => P1;
         public Vector3 P1 { get; set; }
         public Vector3 P2 { get; set; }
         public Vector3 P3 { get; set; }
@@ -31,10 +32,10 @@ namespace Triangle
         static Point _CachedscreenSize;
         static Texture2D _texture;
         static Color[] _pixelBuffer;
-        public static void Initialize(SpriteBatch spritebatch, Point screenSize) // call once per frame
+        public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
         {
-            _screenCenter = new Point(screenSize.X / 2, screenSize.Y / 2);
-            _CachedscreenSize = screenSize;
+            _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
+            _CachedscreenSize = new Point(screenBuffer.width, screenBuffer.height);
             _texture = new Texture2D(spritebatch.GraphicsDevice, 1, 1);
             _texture.SetData(new Color[1] { Color.White });
         }
@@ -116,7 +117,7 @@ namespace Triangle
             !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P3, out Point p3)
             ) { return; }
 
-            //if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles
+            if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles
 
             /* calculates a bounding rectangle for the triangle */
             int xmin = Math.Max(General.min3(p1.X, p2.X, p3.X), 0);
@@ -151,7 +152,7 @@ namespace Triangle
                     }
                 }
         }
-        static bool IsPointInTriangle(int px, int py, Point a, Point b, Point c, int BYminusCY, int AXminusCX, int CXminusBX)
+        public static bool IsPointInTriangle(int px, int py, Point a, Point b, Point c, int BYminusCY, int AXminusCX, int CXminusBX)
         {
             int PXminusCX = px - c.X;
             int PYminusCY = py - c.Y;
@@ -189,7 +190,7 @@ namespace Triangle
             Vector3 relativePos = objectPosition - cameraPosition;
             Vector3 rotatedrelativePos = General.RotateVector(relativePos, yaw, pitch);
 
-            if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return null
+            if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return as failed
 
             screenPos = new Point(
                 (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * _fov_scale * _screenCenter.X + _screenCenter.X),
@@ -197,6 +198,22 @@ namespace Triangle
             );
 
             return true;
+        }
+        public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
+        {
+            // Yaw rotation (around Y axis) // first for fps feel
+            float cosYaw = MathF.Cos(yaw);
+            float sinYaw = MathF.Sin(yaw);
+            float x1 = vector.X * cosYaw - vector.Z * sinYaw;
+            float z1 = vector.X * sinYaw + vector.Z * cosYaw;
+
+            // Pitch rotation (around X axis)
+            float cosPitch = MathF.Cos(pitch);
+            float sinPitch = MathF.Sin(pitch);
+            float y1 = vector.Y * cosPitch - z1 * sinPitch;
+            float z2 = vector.Y * sinPitch + z1 * cosPitch;
+
+            return new Vector3(x1, y1, z2);
         }
         public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
         {
@@ -213,10 +230,10 @@ namespace Triangle
             // mix colors based on the difference in rays
             return Color.Lerp(triangleColor, lightColor, dotProduct);
         }
-        public unsafe static Triangle[] ModelConstructor((int, int, int)[] Triangles, Vector3[] Vertices)
+        public unsafe static Shape[] ModelConstructor((int, int, int)[] Triangles, Vector3[] Vertices)
         {
-            Triangle[] ProcessedTriangles = new Triangle[Triangles.Length];
-            fixed (Triangle* processedTrianglesPtr = ProcessedTriangles)
+            Shape[] ProcessedTriangles = new Shape[Triangles.Length];
+            fixed (Shape* processedTrianglesPtr = ProcessedTriangles)
             fixed ((int, int, int)* trianglesPtr = Triangles)
             fixed (Vector3* verticesPtr = Vertices)
             {

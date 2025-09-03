@@ -16,6 +16,24 @@ namespace Triangle
     internal class General
     {
         static Stopwatch _doubleClickTimer = new();
+
+        public static Vector3 RandomVector3(int min, int max, Random rnd)
+        {
+            return new Vector3(rnd.Next(min, max), rnd.Next(min, max), rnd.Next(min, max));
+        }
+        public static int min4(int a, int b, int c, int d)
+        {
+            int m = (a < b) ? a : b;
+            m = (m < c) ? m : c;
+            return (m < d) ? m : d;
+            
+        }
+        public static int max4(int a, int b, int c, int d)
+        {
+            int m = (a > b) ? a : b;
+            m = (m > c) ? m : c;
+            return (m > d) ? m : d;
+        }
         public static int min3(int a, int b, int c)
         {
             int t = (a < b) ? a : b;

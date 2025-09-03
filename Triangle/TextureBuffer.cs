@@ -15,8 +15,8 @@ namespace Triangle
         int[] _distance;
         public ref Color[] Pixels { get => ref _pixels; }
         public ref int[] Distance { get => ref _distance; }
-        int width { get; set; }
-        int height { get; set; }
+        public int width { get; set; }
+        public int height { get; set; }
         public TextureBuffer(int width, int height, Color BackgroundColor)
         {
             this.width = width;
@@ -32,7 +32,7 @@ namespace Triangle
             Array.Fill(_pixels, color);
             Array.Fill(_distance, int.MaxValue);
         }
-        public unsafe void applyDepth()
+        public unsafe void applyDepth(int strength)
         {
             fixed (Color* screenBufferColorPtr = _pixels)
             fixed (int* screenBufferDistancePtr = _distance)
@@ -40,7 +40,7 @@ namespace Triangle
                 for (int i = 0; i < _pixels.Length; i++)
                 {
                     if (screenBufferDistancePtr[i] == int.MaxValue) { continue; }
-                    screenBufferColorPtr[i] = Color.Lerp(Color.Black, screenBufferColorPtr[i], 1f / (screenBufferDistancePtr[i] / 100f));
+                    screenBufferColorPtr[i] = Color.Lerp(Color.Black, screenBufferColorPtr[i], 1f / (screenBufferDistancePtr[i] / strength));
                 }
             }
         }
