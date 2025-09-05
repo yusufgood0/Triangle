@@ -24,5 +24,9 @@ namespace Triangle
         {
             Debug.WriteLine("this is interface Code, It Should not run");
         }
+        public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
+        {
+            return default;
+        }
     }
 }

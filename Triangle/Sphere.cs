@@ -19,13 +19,22 @@ namespace Triangle
         List<Vector3> Vertices;
         public Vector3 Center { get; private set; }
         public float Radius { get; private set; }
-        public void Move(Vector3 offset)
+        public Sphere(Sphere Sphere)
         {
-            Center += offset;
+            this.Triangles = new(Sphere.Triangles);
+            this.Vertices = new(Sphere.Vertices);
+            this.Center = Sphere.Center;
+            this.Radius = Sphere.Radius;
+        }
+        public Model Move(Vector3 offset)
+        {
+            Sphere sphere = new(this);
+            sphere.Center += offset;
             for (int i = 0; i < Vertices.Count; i++)
             {
-                Vertices[i] += offset;
+                sphere.Vertices[i] += offset;
             }
+            return sphere;
         }
         public Sphere(Vector3 center, float radius, int quality)
         {

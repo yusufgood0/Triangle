@@ -31,13 +31,13 @@ namespace Triangle
         float zSize;
         public Vector3 Position { get => TLF; set => TLF = value; }
         public Vector3 TLF;
-        public Vector3 TRF { get => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z); }
-        public Vector3 BLF { get => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z); }
-        public Vector3 BRF { get => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z); }
-        public Vector3 TLB { get => new Vector3(TLF.X, TLF.Y, TLF.Z + zSize); }
-        public Vector3 TRB { get => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize); }
-        public Vector3 BLB { get => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize); }
-        public Vector3 BRB { get => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize); }
+        public Vector3 TRF => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z); 
+        public Vector3 BLF => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z); 
+        public Vector3 BRF => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z); 
+        public Vector3 TLB => new Vector3(TLF.X, TLF.Y, TLF.Z + zSize); 
+        public Vector3 TRB => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize); 
+        public Vector3 BLB => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize); 
+        public Vector3 BRB => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize); 
         public Cube(Vector3 TLF, float xSize, float ySize, float zSize)
         {
             this.TLF = TLF;
@@ -50,16 +50,30 @@ namespace Triangle
             get => Triangle.ModelConstructor(Triangles, new Vector3[]
             {
                 TLF, TRF, BLF, BRF,
-                TLB, TRB, BLB, BRB 
-            }); 
+                TLB, TRB, BLB, BRB
+            });
         }
         public Vector3 Center
         {
-            get => new Vector3(Position.X + xSize/2, Position.Y + ySize / 2, Position.Z + zSize / 2);
+            get => new Vector3(Position.X + xSize / 2, Position.Y + ySize / 2, Position.Z + zSize / 2);
         }
         public Vector3 Opposite
         {
             get => new Vector3(Position.X + xSize, Position.Y + ySize, Position.Z + zSize);
+        }
+        public Cube(Cube Cube)
+        {
+            TLF = Cube.TLF;
+            xSize = Cube.xSize;
+            ySize = Cube.ySize;
+            zSize = Cube.zSize;
+        }
+        public Model Move(Vector3 offset)
+        {
+            Cube cube = new(this);
+            cube.TLF += offset; // other 7 points are dependant on the top-left-frontmost point
+            cube._cachedSquares = null; // old squares become invalid
+            return cube;
         }
         public void DrawAsWhole(
             ref TextureBuffer screenBuffer,

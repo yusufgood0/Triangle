@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,5 +14,9 @@ namespace Triangle
     {
         Shape[] Shapes { get; }
         BoundingBox BoundingBox { get; }
+        public Model Move(Vector3 offset)
+        {
+            return null;
+        }
     }
 }

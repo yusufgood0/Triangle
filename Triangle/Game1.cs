@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -15,15 +16,14 @@ namespace Triangle
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private Player _player;
-        private Camera _camera;
         private bool _previousIsMouseVisible = false;
         private Point screenSize = new Point(800, 800);
         private int pixelSize = 4;
         private float FOV = MathHelper.Pi / 2;
-        private BoundingFrustum frustrum;
         private KeyboardState _keyboardState;
         private KeyboardState _previousKeyboardState;
-        private List<Triangle> Triangles = new List<Triangle>();
+        private MouseState _mouseState;
+        private MouseState _previousMouseState;
         private List<Model> Models = new List<Model>();
         private TextureBuffer _screenBuffer;
         private Texture2D screenTextureBuffer;
@@ -117,6 +117,7 @@ namespace Triangle
                 Exit();
 
             _keyboardState = Keyboard.GetState();
+            _mouseState = Mouse.GetState();
 
             IsMouseVisible = !IsActive;
 
@@ -126,7 +127,12 @@ namespace Triangle
 
 
             Square.UpdateConstants(FOV);
-            Triangle.UpdateConstants(FOV, screenSize);
+            Triangle.UpdateConstants(FOV);
+            foreach (Projectile projectile in projectiles)
+            {
+                projectile.Move();
+            }
+
 
             int playerXIndex = (int)_player.Position.X / MapCellSize;
             int playerYIndex = (int)_player.Position.Z / MapCellSize;
@@ -150,6 +156,13 @@ namespace Triangle
                 _player.Dash();
             }
 
+            if (General.OnLeftPress(_mouseState, _previousMouseState))
+            {
+                projectiles.Add(
+                new FireBolt(_player.Center, _player.dirVector)
+                );
+            }
+            _previousMouseState = _mouseState;
             _previousKeyboardState = _keyboardState;
             _previousIsMouseVisible = IsMouseVisible;
             base.Update(gameTime);
@@ -166,29 +179,47 @@ namespace Triangle
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = seedMapper.Heights;
             var valueMap = seedMapper.Values;
-            var Colors = new Color[] { Color.Aqua, Color.Green };
+            var Colors = new Color[] { Color.CornflowerBlue, Color.Green };
 
             for (int y = 0; y < seedMapper.height - 1; y++)
             {
                 for (int x = 0; x < seedMapper.width - 1; x++)
                 {
+                    int yPlus1 = y + 1;
+                    int xPlus1 = x + 1;
                     int p1x = x;
                     int p1y = y;
-                    Vector3 p1 = new Vector3(p1x * MapCellSize, heightMap[p1x, p1y], p1y * MapCellSize);
-                    var p2x = x + 1;
+                    int p1TrueX = x * MapCellSize;
+                    int p1TrueY = y * MapCellSize;
+                    Vector3 p1 = new Vector3(p1TrueX, heightMap[p1x, p1y], p1TrueY);
+                    var p2x = xPlus1;
                     int p2y = y;
-                    Vector3 p2 = new Vector3(p2x * MapCellSize, heightMap[p2x, p2y], p2y * MapCellSize);
-                    var p3x = x + 1;
-                    int p3y = y + 1;
-                    Vector3 p3 = new Vector3(p3x * MapCellSize, heightMap[p3x, p3y], p3y * MapCellSize);
+                    Vector3 p2 = new Vector3(p1TrueX + MapCellSize, heightMap[p2x, p2y], p1TrueY);
+                    var p3x = xPlus1;
+                    int p3y = yPlus1;
+                    Vector3 p3 = new Vector3(p1TrueX + MapCellSize, heightMap[p3x, p3y], p1TrueY + MapCellSize);
                     int p4x = x;
-                    int p4y = y + 1;
-                    Vector3 p4 = new Vector3(p4x * MapCellSize, heightMap[p4x, p4y], p4y * MapCellSize);
+                    int p4y = yPlus1;
+                    Vector3 p4 = new Vector3(p1TrueX, heightMap[p4x, p4y], p1TrueY + MapCellSize);
                     VisibleShapes.Add(new Square(p1, p2, p3, p4));
                     ShapesColors.Add(Colors[valueMap[p4x, p4y]]);
                 }
             }
-
+            for (int i = 0; i < projectiles.Count; i++)
+            {
+                Model model = projectiles[i].Model;
+                BoundingBox boundingBox = model.BoundingBox;
+                var value = viewFrustrum.Contains(boundingBox);
+                if (value != ContainmentType.Disjoint)
+                {
+                    Shape[] shapes = model.Shapes;
+                    VisibleShapes.AddRange(shapes);
+                    for (int j = 0; j < shapes.Length; j++)
+                    {
+                        ShapesColors.Add(projectiles[i].Color);
+                    }
+                }
+            }
             foreach (Model model in Models)
             {
                 BoundingBox boundingBox = model.BoundingBox;
@@ -204,13 +235,13 @@ namespace Triangle
                 }
             }
 
-            Vector3 lightSource = new Vector3(0, 0, 0);
+            Vector3 lightSource = new Vector3(0, -1000, 0);
             for (int i = 0; i < VisibleShapes.Count; i++)
             {
-                Vector3 trianglePos = VisibleShapes[i].Position;
-                int distance = (int)Vector3.Distance(trianglePos, _player.Center);
-                //Color color = triangle.ApplyShading(trianglePos - lightSource, Color.Black, Color.White);
-                VisibleShapes[i].Draw(ref _screenBuffer, ShapesColors[i], _player.Center, _player._angle.Y, _player._angle.X, distance);
+                Vector3 shapePos = VisibleShapes[i].Position;
+                int distance = (int)Vector3.Distance(shapePos, _player.Center);
+                Color color = VisibleShapes[i].ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightYellow);
+                VisibleShapes[i].Draw(ref _screenBuffer, color, _player.Center, _player._angle.Y, _player._angle.X, distance);
             }
             framesPerSecondTimer.update();
 

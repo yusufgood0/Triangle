@@ -47,7 +47,7 @@ namespace Triangle
             normalDir.Normalize();
 
             // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
-            float dotProduct = Vector3.Dot(normalDir, lightDirection);
+            float dotProduct = Vector3.Dot(-normalDir, lightDirection);
 
             // mix colors based on the difference in rays
             return Color.Lerp(triangleColor, lightColor, dotProduct);
@@ -59,8 +59,6 @@ namespace Triangle
             float distance12 = Vector3.DistanceSquared(p1, p2);
             float distance13 = Vector3.DistanceSquared(p1, p3);
             float distance14 = Vector3.DistanceSquared(p1, p4);
-
-
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,

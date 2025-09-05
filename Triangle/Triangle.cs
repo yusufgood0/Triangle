@@ -39,7 +39,7 @@ namespace Triangle
             _texture = new Texture2D(spritebatch.GraphicsDevice, 1, 1);
             _texture.SetData(new Color[1] { Color.White });
         }
-        public static void UpdateConstants(float FOV, Point screenSize) // call once per frame
+        public static void UpdateConstants(float FOV) // call once per frame
         {
             _fov_scale = 1f / MathF.Tan(FOV / 2);
         }
