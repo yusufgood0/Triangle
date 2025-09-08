@@ -11,21 +11,21 @@ namespace Triangle
 {
     internal struct Square : Shape
     {
-        Vector3 Shape.Position => vertices[0];
+        Vector3 Shape.Position => Vertices[0];
 
         public static (int, int, int)[] triangles = new (int, int, int)[]
                 {
                     (1, 2, 3),
                     (1, 3, 4)
                 };
-        public Vector3[] vertices;
-        public Shape[] Triangles { get => Triangle.ModelConstructor(triangles, vertices); }
+        public Vector3[] Vertices;
+        public Shape[] Triangles { get => Triangle.ModelConstructor(triangles, Vertices); }
         static Point _screenCenter;
         static Point _CachedscreenSize;
         static float _fov_scale;
         public Vector3 Average()
         {
-            return (vertices[0] + vertices[1] + vertices[2] + vertices[3]) / 4;
+            return (Vertices[0] + Vertices[1] + Vertices[2] + Vertices[3]) / 4;
         }
         public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
         {
@@ -36,15 +36,19 @@ namespace Triangle
         {
             _fov_scale = 1f / MathF.Tan(FOV / 2);
         }
+        public Vector3 Normal()
+        {
+            Vector3 side1 = Vertices[0] - Vertices[1];
+            Vector3 side2 = Vertices[0] - Vertices[3];
+            Vector3 normalDir = Vector3.Cross(side1, side2);
+            normalDir.Normalize();
+            return normalDir;
+        }
         public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
         {
             lightDirection.Normalize();
 
-            Shape triangle = Triangles[0];
-            Vector3 side1 = vertices[0] - vertices[1];
-            Vector3 side2 = vertices[0] - vertices[3];
-            Vector3 normalDir = Vector3.Cross(side1, side2);
-            normalDir.Normalize();
+            Vector3 normalDir = Normal();
 
             // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
             float dotProduct = Vector3.Dot(-normalDir, lightDirection);
@@ -54,7 +58,7 @@ namespace Triangle
         }
         public Square(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4)
         {
-            vertices = new Vector3[] { p1, p2, p3, p4 };
+            Vertices = new Vector3[] { p1, p2, p3, p4 };
 
             float distance12 = Vector3.DistanceSquared(p1, p2);
             float distance13 = Vector3.DistanceSquared(p1, p3);
@@ -70,10 +74,10 @@ namespace Triangle
             )
         {
             if (
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.vertices[0], out Point p1) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.vertices[1], out Point p2) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.vertices[2], out Point p3) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.vertices[3], out Point p4)
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[0], out Point p1) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[1], out Point p2) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[2], out Point p3) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[3], out Point p4)
             ) { return; }
 
             //if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles

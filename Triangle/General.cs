@@ -135,7 +135,16 @@ namespace Triangle
             return degrees * (MathF.PI / 180f);
         }
 
-        public static Vector3 rotate(Vector3 Vector, float yaw, float pitch)
+        public static Vector3 RotateX(Vector3 Vector, float yaw)
+        {
+
+            float cosYaw = (float)Math.Cos(yaw);
+            float sinYaw = (float)Math.Sin(yaw);
+            float x1 = Vector.X * cosYaw + Vector.Z * sinYaw;
+            float z1 = -Vector.X * sinYaw + Vector.Z * cosYaw;
+            return new(x1, Vector.Y, z1);
+        }
+        public static Vector3 Rotate(Vector3 Vector, float yaw, float pitch)
         {
             // Yaw: rotate around Y-axis
             float cosYaw = (float)Math.Cos(yaw);

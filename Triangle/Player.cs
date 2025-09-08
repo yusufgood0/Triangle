@@ -124,16 +124,16 @@ namespace Triangle
         }
         public void HitGround(KeyboardState keyBoardState)
         {
-            if (_speed.Y > 10 && keyBoardState.IsKeyUp(Keys.LeftShift))
+            if (_speed.Y > 10 && keyBoardState.IsKeyUp(Keys.Space))
             {
                 _speed.Y = -_speed.Y * 0.4f;
             }
             else
             {
-                _speed.Y = 0;
+                _speed.Y = 9;
             }
-            _speed.X *= .70f;
-            _speed.Z *= .70f;
+            _speed.X *= 1.01f;
+            _speed.Z *= 1.01f;
 
         }
         public void Jump()
@@ -143,12 +143,12 @@ namespace Triangle
         public void SetPosition(Vector3 vector)
         {
             _position = vector;
-            PlayerCamera.Position = Center;
+            PlayerCamera.Position = EyePos;
         }
         public void Move(Vector3 vector)
         {
             _position += vector;
-            PlayerCamera.Position = Center;
+            PlayerCamera.Position = EyePos;
         }
         enum Direction
         {
@@ -245,10 +245,12 @@ namespace Triangle
         }
         public bool IsSurvival { get => gameMode == GameMode.Survival;}
         public bool IsCreative { get => gameMode == GameMode.Creative;}
-        public Vector2 XY { get => new(_position.X, _position.Y);}
+        public Vector2 XZ { get => new(_position.X, _position.Z);}
         public Vector3 Speed { get => _speed;}
         public Vector3 Position { get => _position;}
+        public Vector3 OppositeCorner => Position + new Vector3(sizeX, sizeY, sizeZ);
         public Vector3 Center { get => _position + new Vector3(sizeX, sizeY, sizeZ) / 2;}
+        public Vector3 EyePos => _position + new Vector3(sizeX / 2, 0, sizeZ / 2);
         public Rectangle Rectangle { get => new((int)_position.X, (int)_position.Y, sizeX, sizeY);}
         //public Cube Cube { get => new(_position, sizeX, sizeY, sizeZ);}
         public Vector3 dirVector { get => General.angleToVector3(_angle); }

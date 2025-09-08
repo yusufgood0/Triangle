@@ -17,7 +17,7 @@ namespace Triangle
         private SpriteBatch _spriteBatch;
         private Player _player;
         private bool _previousIsMouseVisible = false;
-        private Point screenSize = new Point(800, 800);
+        private Point screenSize = new Point(1280, 720);
         private int pixelSize = 4;
         private float FOV = MathHelper.Pi / 2;
         private KeyboardState _keyboardState;
@@ -28,10 +28,19 @@ namespace Triangle
         private TextureBuffer _screenBuffer;
         private Texture2D screenTextureBuffer;
         private FramesPerSecondTimer framesPerSecondTimer = new();
-        private seedMapper seedMapper;
+        private SeedMapper seedMapper;
+        private Point mapSize = new (300, 300);
         private const int MapCellSize = 40;
-        private List<Projectile> projectiles = new List<Projectile>();
+        private List<Projectile> _projectiles = new List<Projectile>();
         private Random rnd = new Random();
+        private SpellBook _spellbook = new SpellBook();
+        private List<SquareParticle> _squareParticles = new();
+        private int _screenShake;
+        private Vector3 lightSource;
+        
+
+
+        private List<Action> KeyBinds = new();
 
         //private BoundingBox;
 
@@ -39,13 +48,18 @@ namespace Triangle
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
+            _graphics.IsFullScreen = false;
             Content.RootDirectory = "Content";
             IsMouseVisible = false;
         }
 
         protected override void Initialize()
         {
+
             /* resizes screen */
+            screenSize.X = GraphicsDevice.Adapter.CurrentDisplayMode.Width;
+            screenSize.Y = GraphicsDevice.Adapter.CurrentDisplayMode.Height;
+
             _graphics.PreferredBackBufferWidth = screenSize.X;
             _graphics.PreferredBackBufferHeight = screenSize.Y;
             _graphics.ApplyChanges();
@@ -54,10 +68,13 @@ namespace Triangle
             blankTexture = new Texture2D(GraphicsDevice, 1, 1);
             blankTexture.SetData(new Color[] { Color.White });
 
-            /* Inilizes random for testing */
+            /* Initilize Keybinds with early values */
+            KeyBinds.Add(new Action(Keys.D1, ActionCatagory.AddElement, (int)Element.Fire));
+            KeyBinds.Add(new Action(Keys.D2, ActionCatagory.AddElement, (int)Element.Water));
+            KeyBinds.Add(new Action(Keys.D3, ActionCatagory.AddElement, (int)Element.Air));
+            KeyBinds.Add(new Action(Keys.D4, ActionCatagory.AddElement, (int)Element.Earth));
 
-
-            /* randomly places many orbs around for testing */
+            /* randomly places many orbs around for testing 
             for (int i = 0; i < 1250; i++)
             {
                 int quality = rnd.Next(5, 10);
@@ -90,18 +107,20 @@ namespace Triangle
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             _screenBuffer = new TextureBuffer(screenSize.X / pixelSize, screenSize.Y / pixelSize, Color.Transparent);
-
             Triangle.Initialize(_spriteBatch, _screenBuffer);
             Square.Initialize(_spriteBatch, _screenBuffer);
 
+            Vector3 MapCenter = new Vector3(mapSize.X / 2 * MapCellSize, -1000, mapSize.Y / 2 * MapCellSize);
+            lightSource = MapCenter;
+            Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Z);
             _player = new Player(
-                Vector3.Zero,
-                new Camera(screenSize.Y / screenSize.X, Vector3.Zero, Vector3.Zero, Vector3.Down, 2000, FOV)
+                PlayerPos,
+                new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f)
                 );
 
-            seedMapper = new seedMapper(
-                100,
-                100,
+            seedMapper = new SeedMapper(
+                mapSize.X,
+                mapSize.Y,
                 new int[] { 9, 10 },
                 1000,
                 rnd.Next(1, int.MaxValue)
@@ -109,10 +128,14 @@ namespace Triangle
 
             for (int i = 0; i <= 5; i++) { seedMapper.SmoothenTerrain(); }
             seedMapper.SmoothenHeights(10);
+
+
         }
 
         protected override void Update(GameTime gameTime)
         {
+
+
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
@@ -124,19 +147,46 @@ namespace Triangle
             _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, screenSize, 0.01f);
             _player.Update(_keyboardState);
             _player.Move(_player.Speed);
+            float speedSquared =
+                _player.Speed.X * _player.Speed.X +
+                _player.Speed.Y * _player.Speed.Y +
+                _player.Speed.Z * _player.Speed.Z;
+            _screenShake = (int)speedSquared / 200;
 
 
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
-            foreach (Projectile projectile in projectiles)
+            for (int i = 0; i < _squareParticles.Count; i++)
             {
-                projectile.Move();
+                var particle = _squareParticles[i];
+                int LifeTime = (int)(DateTime.Now - particle.CreationTime).Milliseconds;
+                if (rnd.Next(0, LifeTime) > 750)
+                {
+                    _squareParticles.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+                particle.Float(4);
+            }
+            for (int i = 0; i < _projectiles.Count; i++)
+            {
+                var projectile = _projectiles[i];
+                if (projectile.Move(seedMapper, MapCellSize))
+                {
+                    _squareParticles.AddRange(projectile.HitGround(rnd)); 
+                    _projectiles.Remove(projectile);
+                    i--;
+                    continue;
+                }
+                
+                var particle = projectile.GetParticles(rnd);
+                if (particle == null) { continue; }
+                _squareParticles.Add((SquareParticle)particle);
             }
 
 
-            int playerXIndex = (int)_player.Position.X / MapCellSize;
-            int playerYIndex = (int)_player.Position.Z / MapCellSize;
-            int terrainHeightAtPlayerPosition = seedMapper.Heights[playerXIndex, playerYIndex] - Player.sizeY;
+            var terrainHeightAtPlayerPosition = seedMapper.HeightAtPosition(_player.Position, MapCellSize) - Player.sizeY;
+
             if (terrainHeightAtPlayerPosition < _player.Position.Y)
             {
                 _player.SetPosition(
@@ -151,17 +201,23 @@ namespace Triangle
                     _player.Jump();
                 }
             }
-            else if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.LeftShift))
+
+
+            if (_keyboardState.GetPressedKeyCount() > 0 || _previousKeyboardState.GetPressedKeyCount() > 0)
             {
-                _player.Dash();
+                foreach (Action action in KeyBinds)
+                {
+                    if (action.ActionType != ActionCatagory.AddElement)
+                    {
+                        continue;
+                    }
+                    if (General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
+                    {
+                        _spellbook.AddElement((Element)action.Value, _projectiles, ref _player, ref _squareParticles);
+                    }
+                }
             }
 
-            if (General.OnLeftPress(_mouseState, _previousMouseState))
-            {
-                projectiles.Add(
-                new FireBolt(_player.Center, _player.dirVector)
-                );
-            }
             _previousMouseState = _mouseState;
             _previousKeyboardState = _keyboardState;
             _previousIsMouseVisible = IsMouseVisible;
@@ -170,7 +226,7 @@ namespace Triangle
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(Color.LightGray);
 
             DateTime startTime = DateTime.Now;
 
@@ -181,17 +237,24 @@ namespace Triangle
             var valueMap = seedMapper.Values;
             var Colors = new Color[] { Color.CornflowerBlue, Color.Green };
 
+
             for (int y = 0; y < seedMapper.height - 1; y++)
             {
                 for (int x = 0; x < seedMapper.width - 1; x++)
                 {
-                    int yPlus1 = y + 1;
-                    int xPlus1 = x + 1;
-                    int p1x = x;
-                    int p1y = y;
                     int p1TrueX = x * MapCellSize;
                     int p1TrueY = y * MapCellSize;
-                    Vector3 p1 = new Vector3(p1TrueX, heightMap[p1x, p1y], p1TrueY);
+
+                    Vector3 p1 = new Vector3(p1TrueX, heightMap[x, y], p1TrueY);
+
+                    if (viewFrustrum.Contains(p1) == ContainmentType.Disjoint)
+                    {
+                        continue;
+                    }
+
+                    int yPlus1 = y + 1;
+                    int xPlus1 = x + 1;
+
                     var p2x = xPlus1;
                     int p2y = y;
                     Vector3 p2 = new Vector3(p1TrueX + MapCellSize, heightMap[p2x, p2y], p1TrueY);
@@ -205,9 +268,9 @@ namespace Triangle
                     ShapesColors.Add(Colors[valueMap[p4x, p4y]]);
                 }
             }
-            for (int i = 0; i < projectiles.Count; i++)
+            for (int i = 0; i < _projectiles.Count; i++)
             {
-                Model model = projectiles[i].Model;
+                Model model = _projectiles[i].Model;
                 BoundingBox boundingBox = model.BoundingBox;
                 var value = viewFrustrum.Contains(boundingBox);
                 if (value != ContainmentType.Disjoint)
@@ -216,7 +279,7 @@ namespace Triangle
                     VisibleShapes.AddRange(shapes);
                     for (int j = 0; j < shapes.Length; j++)
                     {
-                        ShapesColors.Add(projectiles[i].Color);
+                        ShapesColors.Add(_projectiles[i].Color);
                     }
                 }
             }
@@ -235,29 +298,41 @@ namespace Triangle
                 }
             }
 
-            Vector3 lightSource = new Vector3(0, -1000, 0);
             for (int i = 0; i < VisibleShapes.Count; i++)
             {
-                Vector3 shapePos = VisibleShapes[i].Position;
-                int distance = (int)Vector3.Distance(shapePos, _player.Center);
-                Color color = VisibleShapes[i].ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightYellow);
-                VisibleShapes[i].Draw(ref _screenBuffer, color, _player.Center, _player._angle.Y, _player._angle.X, distance);
+                Shape shape = VisibleShapes[i];
+                Vector3 shapePos = shape.Position;
+                int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
+                Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightYellow);
+                shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
-            framesPerSecondTimer.update();
+            _squareParticles.Add(new SquareParticle(_player.Position, Color.White, Vector3.Zero));
+            foreach (var Particle in _squareParticles)
+            {
+                Shape shape = Particle.Square;
+                Vector3 shapePos = shape.Position;
+                int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
+                shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
+            }
+            if (framesPerSecondTimer.update())
+            {
+                Debug.WriteLine("DrawTime: " + (DateTime.Now - startTime).Milliseconds);
+                Debug.WriteLine("FPS: " + framesPerSecondTimer.FPS);
+            }
 
-            Debug.WriteLine("DrawTime: " + (DateTime.Now - startTime).Milliseconds);
-            Debug.WriteLine("FPS: " + framesPerSecondTimer.FPS);
 
-            _screenBuffer.applyDepth(300);
+            Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
+
+            _screenBuffer.applyDepth(1000);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            _spriteBatch.Draw(screenTextureBuffer, new Rectangle(0, 0, screenSize.X, screenSize.Y), Color.White);
+            _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
             _spriteBatch.End();
 
 
             screenTextureBuffer.Dispose();
 
-            _screenBuffer.Clear(Color.Transparent);
+            _screenBuffer.Clear(Color.DarkSlateBlue);
 
             base.Draw(gameTime);
         }

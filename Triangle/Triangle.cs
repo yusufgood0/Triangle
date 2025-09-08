@@ -17,7 +17,7 @@ namespace Triangle
         public Vector3 P1 { get; set; }
         public Vector3 P2 { get; set; }
         public Vector3 P3 { get; set; }
-        public Vector3 Average { get => (P1 + P2 + P3) / 3; }
+        public Vector3 Average => (P1 + P2 + P3) / 3;
         public Triangle(Vector3 p1, Vector3 p2, Vector3 p3)
         {
             this.P1 = p1;
@@ -215,15 +215,19 @@ namespace Triangle
 
             return new Vector3(x1, y1, z2);
         }
-        public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
+        public Vector3 Normal()
         {
-            lightDirection.Normalize();
-
             Vector3 side1 = P1 - P2;
             Vector3 side2 = P1 - P3;
             Vector3 normalDir = Vector3.Cross(side1, side2);
             normalDir.Normalize();
+            return normalDir;
+        }
+        public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
+        {
+            lightDirection.Normalize();
 
+            var normalDir = Normal();
             // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
             float dotProduct = Vector3.Dot(normalDir, lightDirection);
 

@@ -9,14 +9,14 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace random_generation_in_a_pixel_grid
 {
-    internal class seedMapper
+    internal class SeedMapper
     {
         public int[,] Values { get; set; }
         public int[,] Heights { get; set; }
         WeightedRandom random;
         public int height { get; }
         public int width { get; }
-        public seedMapper(int width, int height, int[] weights, int maxHeight, int? seed = null)
+        public SeedMapper(int width, int height, int[] weights, int maxHeight, int? seed = null)
         {
             this.height = height;
             this.width = width;
@@ -164,6 +164,16 @@ namespace random_generation_in_a_pixel_grid
                     }
                 }
             }
+        }
+        public int HeightAtPosition(Vector3 Position, int MapCellSize)
+        {
+            int playerXIndex = (int)Position.X / MapCellSize;
+            int playerYIndex = (int)Position.Z / MapCellSize;
+            if (playerXIndex >= 0 && playerYIndex >= 0 && playerXIndex < width && playerYIndex < height)
+            {
+                return Heights[playerXIndex, playerYIndex];
+            }
+            return int.MinValue; //outside of map
         }
     }
 }
