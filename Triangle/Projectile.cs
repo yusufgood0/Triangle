@@ -30,7 +30,7 @@ namespace Triangle
             return null;
         }
     }
-    internal class FireBallProjectile(Vector3 Position, Vector3 DirVector) : Projectile
+    internal class FireBallProjectile(Vector3 Position, Vector3 DirVector, float damageMultiplier) : Projectile
     {
         Model Projectile.Model => _model.Move(_position);
         Vector3 Projectile.Velocity => _velocity;

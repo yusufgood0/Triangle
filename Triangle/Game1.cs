@@ -19,7 +19,7 @@ namespace Triangle
         private bool _previousIsMouseVisible = false;
         private Point screenSize = new Point(1280, 720);
         private int pixelSize = 4;
-        private float FOV = MathHelper.Pi / 2;
+        private float FOV = MathHelper.Pi / 1.5f;
         private KeyboardState _keyboardState;
         private KeyboardState _previousKeyboardState;
         private MouseState _mouseState;
@@ -82,7 +82,7 @@ namespace Triangle
             }
             // */
 
-            /* randomly places many cubes around for testing 
+            /* randomly places many cubes around for testing  
             int size = 40;
             for (int x = 0; x < 25; x++)
             {
@@ -235,7 +235,7 @@ namespace Triangle
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = seedMapper.Heights;
             var valueMap = seedMapper.Values;
-            var Colors = new Color[] { Color.CornflowerBlue, Color.Green };
+            var Colors = new Color[] { Color.Gray, Color.Green };
 
 
             for (int y = 0; y < seedMapper.height - 1; y++)
@@ -306,7 +306,6 @@ namespace Triangle
                 Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightYellow);
                 shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
-            _squareParticles.Add(new SquareParticle(_player.Position, Color.White, Vector3.Zero));
             foreach (var Particle in _squareParticles)
             {
                 Shape shape = Particle.Square;
