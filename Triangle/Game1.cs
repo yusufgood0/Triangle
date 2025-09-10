@@ -40,7 +40,7 @@ namespace Triangle
         private Vector3 lightSource;
         private Texture2D Orb;
         private Rectangle OrbRect;
-        private Vector3 orbOffset = new Vector3(50, 50, 400);
+        private Vector3 orbOffset = new Vector3(40, 40, 40);
 
 
 
@@ -317,16 +317,16 @@ namespace Triangle
                 }
             }
             
-            Vector3 orbVector =  General.angleToVector3(_player._angle + new Vector2(0.5f, 0f)) * 40 + _player.EyePos;
-
-            Model sphere = new Sphere(orbVector, 20, 5);
+            Quaternion rotation = Quaternion.CreateFromYawPitchRoll(_player._angle.X, -_player._angle.Y, 0f);
+            Model sphere = new Sphere(Vector3.Transform(orbOffset, rotation) + _player.EyePos, 20, 50);
             Shape[] orbShapes = sphere.Shapes;
             VisibleShapes.AddRange(orbShapes);
             for (int i = 0; i < orbShapes.Length; i++)
             {
-                ShapesColors.Add(Color.DarkGray);
+                ShapesColors.Add(Color.LightSkyBlue);
             }
 
+            /* Draw Shapes */
             for (int i = 0; i < VisibleShapes.Count; i++)
             {
                 Shape shape = VisibleShapes[i];
@@ -338,6 +338,8 @@ namespace Triangle
 
                 shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
+
+            /* Draw Particles */
             foreach (var Particle in _squareParticles)
             {
                 Shape shape = Particle.Square;
@@ -347,8 +349,11 @@ namespace Triangle
 
                 shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
+
+            /* FPS Counter */
             if (framesPerSecondTimer.update())
             {
+                /* Runs Every second */
                 Debug.WriteLine("DrawTime: " + (DateTime.Now - startTime).Milliseconds);
                 Debug.WriteLine("FPS: " + framesPerSecondTimer.FPS);
             }
@@ -360,7 +365,7 @@ namespace Triangle
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
-            _spriteBatch.Draw(Orb, OrbRect, Color.White);
+            //_spriteBatch.Draw(Orb, OrbRect, Color.White);
             _spriteBatch.End();
 
 

@@ -97,6 +97,7 @@ namespace Triangle
                 1 / Vector3.DistanceSquared(cameraPosition, objectPosition)
             );
         }
+        
         public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
         {
             // Yaw rotation (around Y axis) // first for fps feel
@@ -136,6 +137,15 @@ namespace Triangle
         }
 
         public static Vector3 RotateX(Vector3 Vector, float yaw)
+        {
+
+            float cosYaw = (float)Math.Cos(yaw);
+            float sinYaw = (float)Math.Sin(yaw);
+            float x1 = Vector.X * cosYaw + Vector.Z * sinYaw;
+            float z1 = -Vector.X * sinYaw + Vector.Z * cosYaw;
+            return new(x1, Vector.Y, z1);
+        }
+        public static Vector3 RotateY(Vector3 Vector, float yaw)
         {
 
             float cosYaw = (float)Math.Cos(yaw);
