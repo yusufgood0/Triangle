@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -85,8 +84,9 @@ namespace Triangle
             public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
             {
                 Debug.Write("Casting FireBall");
+                float speed = MathF.Pow(player.Speed.X * player.Speed.X + player.Speed.Y * player.Speed.Y * player.Speed.Z * player.Speed.Z, 0.4f);
                 projectiles.Add(
-                new FireBallProjectile(player.EyePos, player.dirVector)
+                new FireBallProjectile(player.EyePos, player.dirVector * speed)
                 );
             }
         }
