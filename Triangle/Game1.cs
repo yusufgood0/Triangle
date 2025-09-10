@@ -40,15 +40,11 @@ namespace Triangle
         private Vector3 lightSource;
         private Texture2D Orb;
         private Rectangle OrbRect;
-        private Vector3 orbOffset = new Vector3(50, 50, 400);
-
-
+        private Vector3 orbOffset = new Vector3(40, 40, 50);
 
         private List<Action> KeyBinds = new();
 
-        //private BoundingBox;
-
-        private Texture2D blankTexture; //for testing purposes
+        //private Texture2D blankTexture; //for testing purposes
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -68,9 +64,10 @@ namespace Triangle
             _graphics.PreferredBackBufferHeight = screenSize.Y;
             _graphics.ApplyChanges();
 
-            /* Initilizes blank texture as a 1x1 white pixel texture */
+            /* Initilizes blank texture as a 1x1 white pixel texture 
             blankTexture = new Texture2D(GraphicsDevice, 1, 1);
             blankTexture.SetData(new Color[] { Color.White });
+            // */
 
             /* Initilize Keybinds with early values */
             KeyBinds.Add(new Action(Keys.D1, ActionCatagory.AddElement, (int)Element.Fire));
@@ -100,8 +97,8 @@ namespace Triangle
             }
             // */
 
-            /* Spawns a Cube at the origin point with a height width and depth of 100 */
-            //Cubes.Add(new Cube(new Vector3(100, 0, 0), 100, 100, 100));
+            /* Spawns a Cube at the origin point with a height width and depth of 100 
+            Cubes.Add(new Cube(new Vector3(100, 0, 0), 100, 100, 100));
             // */
 
             base.Initialize();
@@ -316,15 +313,13 @@ namespace Triangle
                     }
                 }
             }
-            
-            Vector3 orbVector =  General.angleToVector3(_player._angle + new Vector2(0.5f, 0f)) * 40 + _player.EyePos;
 
-            Model sphere = new Sphere(orbVector, 20, 5);
+            
             Shape[] orbShapes = sphere.Shapes;
             VisibleShapes.AddRange(orbShapes);
             for (int i = 0; i < orbShapes.Length; i++)
             {
-                ShapesColors.Add(Color.DarkGray);
+                ShapesColors.Add(Color.CornflowerBlue);
             }
 
             for (int i = 0; i < VisibleShapes.Count; i++)
@@ -334,7 +329,7 @@ namespace Triangle
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
 
-                Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightYellow);
+                Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightGoldenrodYellow);
 
                 shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
@@ -360,7 +355,7 @@ namespace Triangle
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
-            _spriteBatch.Draw(Orb, OrbRect, Color.White);
+            //_spriteBatch.Draw(Orb, OrbRect, Color.White);
             _spriteBatch.End();
 
 

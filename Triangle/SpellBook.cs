@@ -86,7 +86,7 @@ namespace Triangle
                 Debug.Write("Casting FireBall");
                 float speed = MathF.Pow(player.Speed.X * player.Speed.X + player.Speed.Y * player.Speed.Y * player.Speed.Z * player.Speed.Z, 0.4f);
                 projectiles.Add(
-                new FireBallProjectile(player.EyePos, player.dirVector * speed)
+                new FireBallProjectile(player.EyePos, player.dirVector, 1 + speed, speed)
                 );
             }
         }
