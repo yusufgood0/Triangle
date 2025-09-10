@@ -55,10 +55,10 @@ namespace Triangle
         }
         public SquareParticle? GetParticles(Random rnd)
         {
-            _colorState = new Color(rnd.Next(100, 255), rnd.Next(0, 100), 0);
+            _colorState = new Color(rnd.Next(100, 255), rnd.Next(0, 60), 0);
 
             Color color = _colorState;
-            var particle = new SquareParticle(_position, color, _velocity * 0.1f);
+            var particle = new SquareParticle(_position, color, _velocity);
             particle.Float(rnd.Next(5, 50));
             return particle;
         }

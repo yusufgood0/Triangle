@@ -17,7 +17,7 @@ namespace Triangle
         private SpriteBatch _spriteBatch;
         private Player _player;
         private bool _previousIsMouseVisible = false;
-        private Point screenSize = new Point(1280, 720);
+        private Point screenSize;
         private int pixelSize = 4;
         private float FOV = MathHelper.Pi / 2;
         private KeyboardState _keyboardState;
@@ -29,7 +29,8 @@ namespace Triangle
         private Texture2D screenTextureBuffer;
         private FramesPerSecondTimer framesPerSecondTimer = new();
         private SeedMapper seedMapper;
-        private Point mapSize = new (300, 300);
+        private Point mapSize = new(300, 300);
+        private Point playerTileIndex;
         private const int MapCellSize = 40;
         private List<Projectile> _projectiles = new List<Projectile>();
         private Random rnd = new Random();
@@ -37,7 +38,10 @@ namespace Triangle
         private List<SquareParticle> _squareParticles = new();
         private int _screenShake;
         private Vector3 lightSource;
-        
+        private Texture2D Orb;
+        private Rectangle OrbRect;
+        private Vector3 orbOffset = new Vector3(50, 50, 400);
+
 
 
         private List<Action> KeyBinds = new();
@@ -48,7 +52,7 @@ namespace Triangle
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.IsFullScreen = false;
+            _graphics.IsFullScreen = true;
             Content.RootDirectory = "Content";
             IsMouseVisible = false;
         }
@@ -113,6 +117,16 @@ namespace Triangle
             Vector3 MapCenter = new Vector3(mapSize.X / 2 * MapCellSize, -1000, mapSize.Y / 2 * MapCellSize);
             lightSource = MapCenter;
             Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Z);
+
+            /* Load Textures here */
+            Orb = Content.Load<Texture2D>("crystalBall");
+            int orbWidthAndHeight = (int)(screenSize.X * 0.3f);
+            OrbRect = new(
+                screenSize.X - orbWidthAndHeight - 10, 
+                screenSize.Y - orbWidthAndHeight - 10, 
+                orbWidthAndHeight, 
+                orbWidthAndHeight);
+
             _player = new Player(
                 PlayerPos,
                 new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f)
@@ -159,7 +173,7 @@ namespace Triangle
             for (int i = 0; i < _squareParticles.Count; i++)
             {
                 var particle = _squareParticles[i];
-                int LifeTime = (int)(DateTime.Now - particle.CreationTime).Milliseconds;
+                int LifeTime = (int)(DateTime.Now - particle.CreationTime).TotalMilliseconds;
                 if (rnd.Next(0, LifeTime) > 750)
                 {
                     _squareParticles.RemoveAt(i);
@@ -173,18 +187,21 @@ namespace Triangle
                 var projectile = _projectiles[i];
                 if (projectile.Move(seedMapper, MapCellSize))
                 {
-                    _squareParticles.AddRange(projectile.HitGround(rnd)); 
+                    _squareParticles.AddRange(projectile.HitGround(rnd));
                     _projectiles.Remove(projectile);
                     i--;
                     continue;
                 }
-                
+
                 var particle = projectile.GetParticles(rnd);
                 if (particle == null) { continue; }
                 _squareParticles.Add((SquareParticle)particle);
             }
 
-
+            playerTileIndex = new Point(
+                (int)(_player.Position.X / MapCellSize),
+                (int)(_player.Position.Z / MapCellSize)
+                );
             var terrainHeightAtPlayerPosition = seedMapper.HeightAtPosition(_player.Position, MapCellSize) - Player.sizeY;
 
             if (terrainHeightAtPlayerPosition < _player.Position.Y)
@@ -207,11 +224,7 @@ namespace Triangle
             {
                 foreach (Action action in KeyBinds)
                 {
-                    if (action.ActionType != ActionCatagory.AddElement)
-                    {
-                        continue;
-                    }
-                    if (General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
+                    if (action.ActionType == ActionCatagory.AddElement && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
                     {
                         _spellbook.AddElement((Element)action.Value, _projectiles, ref _player, ref _squareParticles);
                     }
@@ -237,16 +250,22 @@ namespace Triangle
             var valueMap = seedMapper.Values;
             var Colors = new Color[] { Color.CornflowerBlue, Color.Green };
 
-
-            for (int y = 0; y < seedMapper.height - 1; y++)
+            int renderDistance = 100;
+            int startIndexX = Math.Max(0, playerTileIndex.X - renderDistance);
+            int startIndexY = Math.Max(0, playerTileIndex.Y - renderDistance);
+            int endIndexX = Math.Min(seedMapper.width - 1, playerTileIndex.X + renderDistance);
+            int endIndexY = Math.Min(seedMapper.height - 1, playerTileIndex.Y + renderDistance);
+            Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
+            for (int y = startIndexY; y < endIndexY; y++)
             {
-                for (int x = 0; x < seedMapper.width - 1; x++)
+                for (int x = startIndexX; x < endIndexX; x++)
                 {
                     int p1TrueX = x * MapCellSize;
                     int p1TrueY = y * MapCellSize;
 
                     Vector3 p1 = new Vector3(p1TrueX, heightMap[x, y], p1TrueY);
 
+                    //if (!(Triangle.WorldPosToScreenPos(_player.EyePos, _player._angle.Y, _player._angle.X, p1, out Point screenPos) && screenRect.Contains(screenPos))) 
                     if (viewFrustrum.Contains(p1) == ContainmentType.Disjoint)
                     {
                         continue;
@@ -297,21 +316,35 @@ namespace Triangle
                     }
                 }
             }
+            
+            Vector3 orbVector =  General.angleToVector3(_player._angle + new Vector2(0.5f, 0f)) * 40 + _player.EyePos;
+
+            Model sphere = new Sphere(orbVector, 20, 5);
+            Shape[] orbShapes = sphere.Shapes;
+            VisibleShapes.AddRange(orbShapes);
+            for (int i = 0; i < orbShapes.Length; i++)
+            {
+                ShapesColors.Add(Color.DarkGray);
+            }
 
             for (int i = 0; i < VisibleShapes.Count; i++)
             {
                 Shape shape = VisibleShapes[i];
+
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
+
                 Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightYellow);
+
                 shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
-            _squareParticles.Add(new SquareParticle(_player.Position, Color.White, Vector3.Zero));
             foreach (var Particle in _squareParticles)
             {
                 Shape shape = Particle.Square;
+
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
+
                 shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
             if (framesPerSecondTimer.update())
@@ -323,10 +356,11 @@ namespace Triangle
 
             Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
 
-            _screenBuffer.applyDepth(1000);
+            _screenBuffer.applyDepth(800);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
+            _spriteBatch.Draw(Orb, OrbRect, Color.White);
             _spriteBatch.End();
 
 
