@@ -30,7 +30,7 @@ namespace Triangle
             return null;
         }
     }
-    internal class FireBallProjectile(Vector3 Position, Vector3 DirVector, float damageMultiplier) : Projectile
+    internal class FireBallProjectile(Vector3 Position, Vector3 DirVector, float SpeedMultiplier, float damageMultiplier) : Projectile
     {
         Model Projectile.Model => _model.Move(_position);
         Vector3 Projectile.Velocity => _velocity;
@@ -39,7 +39,7 @@ namespace Triangle
 
         static Model _model = new Sphere(Vector3.Zero, 32, 5);
         static Color[] _colors = new Color[] { Color.DarkRed, Color.Orange};
-        Vector3 _velocity = DirVector;
+        Vector3 _velocity = DirVector * SpeedMultiplier;
         Vector3 _position = Position;
         Color _colorState = Color.Red;
         static int _explosionSize = 100;

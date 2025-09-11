@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using random_generation_in_a_pixel_grid;
+using static System.Collections.Specialized.BitVector32;
 namespace Triangle
 {
     public class Game1 : Game
@@ -38,17 +39,11 @@ namespace Triangle
         private List<SquareParticle> _squareParticles = new();
         private int _screenShake;
         private Vector3 lightSource;
-        private Texture2D Orb;
-        private Rectangle OrbRect;
-        private Vector3 orbOffset = new Vector3(40, 40, 40);
-
-
+        private CrystalBall _crystallBall = new CrystalBall(new Vector3(40, 40, 50));
 
         private List<Action> KeyBinds = new();
 
-        //private BoundingBox;
-
-        private Texture2D blankTexture; //for testing purposes
+        //private Texture2D blankTexture; //for testing purposes
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -68,15 +63,17 @@ namespace Triangle
             _graphics.PreferredBackBufferHeight = screenSize.Y;
             _graphics.ApplyChanges();
 
-            /* Initilizes blank texture as a 1x1 white pixel texture */
+            /* Initilizes blank texture as a 1x1 white pixel texture 
             blankTexture = new Texture2D(GraphicsDevice, 1, 1);
             blankTexture.SetData(new Color[] { Color.White });
+            // */
 
             /* Initilize Keybinds with early values */
             KeyBinds.Add(new Action(Keys.D1, ActionCatagory.AddElement, (int)Element.Fire));
             KeyBinds.Add(new Action(Keys.D2, ActionCatagory.AddElement, (int)Element.Water));
             KeyBinds.Add(new Action(Keys.D3, ActionCatagory.AddElement, (int)Element.Air));
             KeyBinds.Add(new Action(Keys.D4, ActionCatagory.AddElement, (int)Element.Earth));
+            KeyBinds.Add(new Action(Keys.Q, ActionCatagory.CastSpell, 0));
 
             /* randomly places many orbs around for testing 
             for (int i = 0; i < 1250; i++)
@@ -100,8 +97,8 @@ namespace Triangle
             }
             // */
 
-            /* Spawns a Cube at the origin point with a height width and depth of 100 */
-            //Cubes.Add(new Cube(new Vector3(100, 0, 0), 100, 100, 100));
+            /* Spawns a Cube at the origin point with a height width and depth of 100 
+            Cubes.Add(new Cube(new Vector3(100, 0, 0), 100, 100, 100));
             // */
 
             base.Initialize();
@@ -114,24 +111,17 @@ namespace Triangle
             Triangle.Initialize(_spriteBatch, _screenBuffer);
             Square.Initialize(_spriteBatch, _screenBuffer);
 
-            Vector3 MapCenter = new Vector3(mapSize.X / 2 * MapCellSize, -1000, mapSize.Y / 2 * MapCellSize);
-            lightSource = MapCenter;
-            Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Z);
+            Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
+            lightSource = new(MapCenter.X, -1000, MapCenter.Y);
+            Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Y);
 
-            /* Load Textures here */
-            Orb = Content.Load<Texture2D>("crystalBall");
-            int orbWidthAndHeight = (int)(screenSize.X * 0.3f);
-            OrbRect = new(
-                screenSize.X - orbWidthAndHeight - 10, 
-                screenSize.Y - orbWidthAndHeight - 10, 
-                orbWidthAndHeight, 
-                orbWidthAndHeight);
-
+            /* Initilize player object */
             _player = new Player(
                 PlayerPos,
                 new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f)
                 );
 
+            /* Load Map */
             seedMapper = new SeedMapper(
                 mapSize.X,
                 mapSize.Y,
@@ -165,8 +155,8 @@ namespace Triangle
                 _player.Speed.X * _player.Speed.X +
                 _player.Speed.Y * _player.Speed.Y +
                 _player.Speed.Z * _player.Speed.Z;
-            _screenShake = (int)speedSquared / 200;
-
+            int TargetScreenShake = (int)speedSquared / 200;
+            _screenShake = Math.Max(_screenShake - 1, TargetScreenShake);
 
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
@@ -226,9 +216,14 @@ namespace Triangle
                 {
                     if (action.ActionType == ActionCatagory.AddElement && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
                     {
-                        _spellbook.AddElement((Element)action.Value, _projectiles, ref _player, ref _squareParticles);
+                        _spellbook.AddElement((Element)action.Value);
+                    }
+                    else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
+                    {
+                        _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
                     }
                 }
+                
             }
 
             _previousMouseState = _mouseState;
@@ -316,14 +311,20 @@ namespace Triangle
                     }
                 }
             }
-            
-            Quaternion rotation = Quaternion.CreateFromYawPitchRoll(_player._angle.X, -_player._angle.Y, 0f);
-            Model sphere = new Sphere(Vector3.Transform(orbOffset, rotation) + _player.EyePos, 20, 50);
-            Shape[] orbShapes = sphere.Shapes;
+
+            _crystallBall.SetPosition(_player);
+            Shape[] orbShapes = _crystallBall.Model.Shapes;
             VisibleShapes.AddRange(orbShapes);
+
+            _crystallBall.UpdateHighlights(rnd);
+            Color[] colors = _spellbook.ElementColors;
+            Debug.WriteLine(_crystallBall.SwirlPos);
             for (int i = 0; i < orbShapes.Length; i++)
             {
-                ShapesColors.Add(Color.LightSkyBlue);
+                int columns = CrystalBall.SphereQuality + 1;
+                int num = (_crystallBall.SwirlPos + i) % columns;
+                int index = (_crystallBall.SwirlPos + i) / columns % 3;
+                ShapesColors.Add(Color.Lerp(colors[index], Color.Black, (num / (float)columns)));
             }
 
             /* Draw Shapes */
@@ -334,7 +335,7 @@ namespace Triangle
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
 
-                Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightYellow);
+                Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightGoldenrodYellow);
 
                 shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
             }
@@ -365,7 +366,6 @@ namespace Triangle
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
-            //_spriteBatch.Draw(Orb, OrbRect, Color.White);
             _spriteBatch.End();
 
 

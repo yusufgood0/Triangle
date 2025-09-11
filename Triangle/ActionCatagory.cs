@@ -12,6 +12,7 @@ namespace Triangle
     enum ActionCatagory
     {
         AddElement = 0,
+        CastSpell = 1,
     }
     internal class Action(Keys Key, ActionCatagory ActionType, int Value)
     {

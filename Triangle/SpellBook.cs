@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -18,6 +19,13 @@ namespace Triangle
     }
     internal class SpellBook()
     {
+        public Color[] ElementColors => new Color[]
+        {
+            _elements[0] == null ? Color.Black: GetElementColor((Element)_elements[0]),
+            _elements[1] == null ? Color.Black: GetElementColor((Element)_elements[1]),
+            _elements[2] == null ? Color.Black: GetElementColor((Element)_elements[2]),
+
+        };
         const int _maxElements = 3;
         Element?[] _elements = new Element?[_maxElements];
         static Dictionary<int, Spell> Spells = new Dictionary<int, Spell>()
@@ -25,7 +33,18 @@ namespace Triangle
             { FireBall.SpellIdentity, new FireBall() },
             { Dash.SpellIdentity, new Dash() },
         };
-        public void AddElement(Element elementToAdd, List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
+        Color GetElementColor(Element element)
+        {
+            return element switch
+            {
+                Element.Earth => new Color(139, 69, 19),
+                Element.Water => new Color(0, 191, 255),
+                Element.Fire => new Color(255, 69, 0),
+                Element.Air => new Color(211, 211, 211),
+                _ => Color.White,
+            };
+        }
+        public void AddElement(Element elementToAdd)
         {
             for (int i = 0; i < _maxElements; i++)
             {
@@ -38,31 +57,35 @@ namespace Triangle
                     }
                 }
             }
+        }
+        public void TryCast(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
+        {
+            for (int i = 0; i < _maxElements; i++)
+            {
+                if (_elements[i] == null)
+                {
+                    return;
+                }
+            }
 
-            CastSpell(projectiles, ref player, ref squareParticles);
+            CastSpell(projectiles, ref player, ref squareParticles, ref screenShake);
 
             for (int j = 0; j < _elements.Length; j++)
             {
                 _elements[j] = null;
             }
         }
-        private void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
+        private void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
         {
             int spellIdentity = ConvertSpellIndex(
                 (Element)_elements[0],
                 (Element)_elements[1],
                 (Element)_elements[2]
                 );
-            Debug.WriteLine($"{_elements[0]} {_elements[1]} {_elements[2]}: ");
             if (Spells.ContainsKey(spellIdentity))
             {
-                Spells[spellIdentity].CastSpell(projectiles, ref player, ref squareParticles);
+                Spells[spellIdentity].CastSpell(projectiles, ref player, ref squareParticles, ref screenShake);
             }
-            else
-            {
-                Debug.Write("Misfire");
-            }
-            Debug.WriteLine("");
 
         }
         public static int ConvertSpellIndex(Element a, Element b, Element c)
@@ -72,7 +95,7 @@ namespace Triangle
         internal interface Spell
         {
             int SpellIdentity { get; }
-            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
+            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
             {
 
             }
@@ -81,12 +104,13 @@ namespace Triangle
         {
             int Spell.SpellIdentity => SpellIdentity;
             public static int SpellIdentity = ConvertSpellIndex(Element.Fire, Element.Fire, Element.Fire);
-            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
+            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
             {
+                screenShake += 15;
                 Debug.Write("Casting FireBall");
                 float speed = MathF.Pow(player.Speed.X * player.Speed.X + player.Speed.Y * player.Speed.Y * player.Speed.Z * player.Speed.Z, 0.4f);
                 projectiles.Add(
-                new FireBallProjectile(player.EyePos, player.dirVector * speed, speed)
+                new FireBallProjectile(player.EyePos, player.dirVector, 1 + speed, speed)
                 );
             }
         }
@@ -94,7 +118,7 @@ namespace Triangle
         {
             int Spell.SpellIdentity => SpellIdentity;
             public static int SpellIdentity = ConvertSpellIndex(Element.Air, Element.Air, Element.Air);
-            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
+            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
             {
                 Debug.Write("Casting Dash");
                 player.Dash();
@@ -104,7 +128,7 @@ namespace Triangle
         {
             int Spell.SpellIdentity => SpellIdentity;
             public static int SpellIdentity = ConvertSpellIndex(Element.Fire, Element.Fire, Element.Air);
-            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
+            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
             {
                 Debug.Write("Casting Fire Burst");
             }
