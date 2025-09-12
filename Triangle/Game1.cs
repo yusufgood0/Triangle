@@ -39,7 +39,7 @@ namespace Triangle
         private List<SquareParticle> _squareParticles = new();
         private int _screenShake;
         private Vector3 lightSource;
-        private CrystalBall _crystallBall = new CrystalBall(new Vector3(40, 40, 50));
+        private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
 
         private List<Action> KeyBinds = new();
 
@@ -216,6 +216,10 @@ namespace Triangle
                 {
                     if (action.ActionType == ActionCatagory.AddElement && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
                     {
+                        if (_spellbook.ElementsCount == 3)
+                        {
+                            _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
+                        }
                         _spellbook.AddElement((Element)action.Value);
                     }
                     else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
@@ -244,6 +248,7 @@ namespace Triangle
             var heightMap = seedMapper.Heights;
             var valueMap = seedMapper.Values;
             var Colors = new Color[] { Color.Gray, Color.Green };
+            
 
             int renderDistance = 100;
             int startIndexX = Math.Max(0, playerTileIndex.X - renderDistance);
@@ -269,10 +274,10 @@ namespace Triangle
                     int yPlus1 = y + 1;
                     int xPlus1 = x + 1;
 
-                    var p2x = xPlus1;
+                    int p2x = xPlus1;
                     int p2y = y;
                     Vector3 p2 = new Vector3(p1TrueX + MapCellSize, heightMap[p2x, p2y], p1TrueY);
-                    var p3x = xPlus1;
+                    int p3x = xPlus1;
                     int p3y = yPlus1;
                     Vector3 p3 = new Vector3(p1TrueX + MapCellSize, heightMap[p3x, p3y], p1TrueY + MapCellSize);
                     int p4x = x;
@@ -312,19 +317,31 @@ namespace Triangle
                 }
             }
 
-            _crystallBall.SetPosition(_player);
-            Shape[] orbShapes = _crystallBall.Model.Shapes;
+            _crystalBall.SetPosition(_player);
+            Shape[] orbShapes = _crystalBall.Model.Shapes;
             VisibleShapes.AddRange(orbShapes);
 
-            _crystallBall.UpdateHighlights(rnd);
+            lightSource = _crystalBall.Position;
+
+            _crystalBall.UpdateHighlights(rnd);
             Color[] colors = _spellbook.ElementColors;
-            Debug.WriteLine(_crystallBall.SwirlPos);
+            int target = 200 - _spellbook.ElementsCount * 45;
+            if (_crystalBall.colorValue < target) _crystalBall.colorValue += 10;
+            else if (_crystalBall.colorValue > target) _crystalBall.colorValue -= 7;
+            Color backGroundColor = new Color(_crystalBall.colorValue, 0, _crystalBall.colorValue);
             for (int i = 0; i < orbShapes.Length; i++)
             {
+                int iPlusSwirlPosition = _crystalBall.SwirlPos + i;
                 int columns = CrystalBall.SphereQuality + 1;
-                int num = (_crystallBall.SwirlPos + i) % columns;
-                int index = (_crystallBall.SwirlPos + i) / columns % 3;
-                ShapesColors.Add(Color.Lerp(colors[index], Color.Black, (num / (float)columns)));
+                int lerpAmount = iPlusSwirlPosition % columns;
+                int colorIndex = iPlusSwirlPosition / columns % 3;
+                Color color = colors[colorIndex];
+                if (color == Color.Black)
+                {
+                    ShapesColors.Add(backGroundColor);
+                    continue;
+                }
+                ShapesColors.Add(Color.Lerp(color, backGroundColor, lerpAmount / (float)columns));
             }
 
             /* Draw Shapes */

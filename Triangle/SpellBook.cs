@@ -19,6 +19,21 @@ namespace Triangle
     }
     internal class SpellBook()
     {
+        public int ElementsCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _maxElements; i++)
+                {
+                    if (_elements[i] != null)
+                    {
+                        count++;
+                    }
+                }
+                return count;
+            }
+        }
         public Color[] ElementColors => new Color[]
         {
             _elements[0] == null ? Color.Black: GetElementColor((Element)_elements[0]),
@@ -33,7 +48,7 @@ namespace Triangle
             { FireBall.SpellIdentity, new FireBall() },
             { Dash.SpellIdentity, new Dash() },
         };
-        Color GetElementColor(Element element)
+        public Color GetElementColor(Element element)
         {
             return element switch
             {
@@ -60,15 +75,10 @@ namespace Triangle
         }
         public void TryCast(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
         {
-            for (int i = 0; i < _maxElements; i++)
+            if (ElementsCount == 3)
             {
-                if (_elements[i] == null)
-                {
-                    return;
-                }
+                CastSpell(projectiles, ref player, ref squareParticles, ref screenShake);
             }
-
-            CastSpell(projectiles, ref player, ref squareParticles, ref screenShake);
 
             for (int j = 0; j < _elements.Length; j++)
             {

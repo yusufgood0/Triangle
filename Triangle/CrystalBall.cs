@@ -12,9 +12,12 @@ namespace Triangle
     {
         public int SwirlPos => _swirlPos;
         public Model Model => _model.Move(_position);
+        public Vector3 Position => _position;
 
-        public static int SphereQuality = 40;
+        public static int SphereQuality = 60;
         public float SwirlSpeed => _swirlSpeed;
+        public int colorValue;
+
         static Model _model = new Sphere(Vector3.Zero, 30, SphereQuality);
         Vector3 _position;
         Vector3[] _highlights = new Vector3[3];

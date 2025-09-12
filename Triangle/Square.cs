@@ -54,7 +54,7 @@ namespace Triangle
             float dotProduct = Vector3.Dot(-normalDir, lightDirection);
 
             // mix colors based on the difference in rays
-            return Color.Lerp(triangleColor, lightColor, dotProduct);
+            return Color.Lerp(triangleColor, lightColor, dotProduct / 2);
         }
         public Square(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4)
         {
