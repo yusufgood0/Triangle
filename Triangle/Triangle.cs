@@ -32,6 +32,8 @@ namespace Triangle
         static Point _CachedscreenSize;
         static Texture2D _texture;
         static Color[] _pixelBuffer;
+        static float ScaleX;
+        static float ScaleY;
         public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
         {
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
@@ -42,65 +44,8 @@ namespace Triangle
         public static void UpdateConstants(float FOV) // call once per frame
         {
             _fov_scale = 1f / MathF.Tan(FOV / 2);
-        }
-        public unsafe void Draw(
-            SpriteBatch spriteBatch,
-            Color color,
-            Vector3 cameraPosition,
-            float pitch,
-            float yaw,
-            int distance
-            )
-        {
-            if (
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P1, out Point p1) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P2, out Point p2) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P3, out Point p3)
-            ) { return; }
-
-            /* calculates a bounding rectangle for the triangle */
-            int xmin = Math.Max(Math.Min(Math.Min(p1.X, p2.X), p3.X), 0);
-            int ymin = Math.Max(Math.Min(Math.Min(p1.Y, p2.Y), p3.Y), 0);
-            int xmax = Math.Min(Math.Max(Math.Max(p1.X, p2.X), p3.X), _CachedscreenSize.X);
-            int ymax = Math.Min(Math.Max(Math.Max(p1.Y, p2.Y), p3.Y), _CachedscreenSize.Y);
-
-            int width = xmax - xmin + 1;
-            int height = ymax - ymin + 1;
-
-            //if (xmax < 0 || xmin > CachescreenSize.X || ymax < 0 || ymin > CachescreenSize.Y) return;
-
-            //if (width < 0 || height < 0) return;
-
-            int numOfPixels = width * height;
-            if (numOfPixels < 0 || numOfPixels > 1000000) return;
-
-            _texture = new Texture2D(spriteBatch.GraphicsDevice, width, height);
-            _pixelBuffer = new Color[numOfPixels];
-
-
-            int BYminusCY = p2.Y - p3.Y;
-            int AXminusCX = p1.X - p3.X;
-            int CXminusBX = p3.X - p2.X;
-
-            fixed (Color* dataPtr = _pixelBuffer)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (IsPointInTriangle(x + xmin, y + ymin, p1, p2, p3, BYminusCY, AXminusCX, CXminusBX))
-                        {
-                            _pixelBuffer[y * width + x] = color;
-                        }
-                    }
-                }
-            }
-
-            _texture.SetData(_pixelBuffer);
-
-            spriteBatch.Begin();
-            spriteBatch.Draw(_texture, new Rectangle(xmin, ymin, width, height), null, Color.White, 0, Vector2.Zero, 0, 1f / distance);
-            spriteBatch.End();
+            ScaleX = _fov_scale * _screenCenter.X;
+            ScaleY = _fov_scale * _screenCenter.Y;
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
@@ -139,15 +84,26 @@ namespace Triangle
             fixed (int* screenBufferDistancePtr = screenBuffer.Distance)
                 for (int y = ymin; y < ymax; y++)
                 {
+                    bool FoundPixel = false;
                     int yTimesWidth = y * _CachedscreenSize.X;
                     for (int x = xmin; x < xmax; x++)
                     {
                         int index = yTimesWidth + x;
 
-                        if (distance <= screenBufferDistancePtr[index] && IsPointInTriangle(x, y, p1, p2, p3, BYminusCY, AXminusCX, CXminusBX))
+                        if (IsPointInTriangle(x, y, p1, p2, p3, BYminusCY, AXminusCX, CXminusBX))
                         {
-                            screenBufferColorPtr[index] = color;
-                            screenBufferDistancePtr[index] = distance;
+                            FoundPixel = true;
+                            if (distance <= screenBufferDistancePtr[index])
+                            {
+                                screenBufferColorPtr[index] = color;
+                                screenBufferDistancePtr[index] = distance;
+                                continue;
+                            }
+                            continue;
+                        }
+                        if (FoundPixel == true)
+                        {
+                            break;
                         }
                     }
                 }
@@ -193,8 +149,8 @@ namespace Triangle
             if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return as failed
 
             screenPos = new Point(
-                (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * _fov_scale * _screenCenter.X + _screenCenter.X),
-                (int)((rotatedrelativePos.Y / rotatedrelativePos.Z) * _fov_scale * _screenCenter.Y + _screenCenter.Y)
+                (int)(rotatedrelativePos.X / rotatedrelativePos.Z * ScaleX + _screenCenter.X),
+                (int)(rotatedrelativePos.Y / rotatedrelativePos.Z * ScaleY + _screenCenter.Y)
             );
 
             return true;
