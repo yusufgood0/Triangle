@@ -138,8 +138,6 @@ namespace Triangle
 
         protected override void Update(GameTime gameTime)
         {
-
-
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
@@ -227,7 +225,7 @@ namespace Triangle
                         _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
                     }
                 }
-                
+
             }
 
             _previousMouseState = _mouseState;
@@ -248,7 +246,15 @@ namespace Triangle
             var heightMap = seedMapper.Heights;
             var valueMap = seedMapper.Values;
             var Colors = new Color[] { Color.Gray, Color.Green };
-            
+
+            for (int y = 0; y < seedMapper.height; y++)
+            {
+                for (int x = 0; x < seedMapper.width; x++) 
+                {
+
+                }
+            }
+
 
             int renderDistance = 100;
             int startIndexX = Math.Max(0, playerTileIndex.X - renderDistance);
@@ -256,6 +262,7 @@ namespace Triangle
             int endIndexX = Math.Min(seedMapper.width - 1, playerTileIndex.X + renderDistance);
             int endIndexY = Math.Min(seedMapper.height - 1, playerTileIndex.Y + renderDistance);
             Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
+            List<int[]> meshIndeces = new();
             for (int y = startIndexY; y < endIndexY; y++)
             {
                 for (int x = startIndexX; x < endIndexX; x++)
@@ -274,19 +281,33 @@ namespace Triangle
                     int yPlus1 = y + 1;
                     int xPlus1 = x + 1;
 
-                    int p2x = xPlus1;
-                    int p2y = y;
-                    Vector3 p2 = new Vector3(p1TrueX + MapCellSize, heightMap[p2x, p2y], p1TrueY);
-                    int p3x = xPlus1;
-                    int p3y = yPlus1;
-                    Vector3 p3 = new Vector3(p1TrueX + MapCellSize, heightMap[p3x, p3y], p1TrueY + MapCellSize);
-                    int p4x = x;
-                    int p4y = yPlus1;
-                    Vector3 p4 = new Vector3(p1TrueX, heightMap[p4x, p4y], p1TrueY + MapCellSize);
-                    VisibleShapes.Add(new Square(p1, p2, p3, p4));
-                    ShapesColors.Add(Colors[valueMap[p4x, p4y]]);
+
+                    meshIndeces.Add(
+                        new int[] {
+                            x, y,
+                            xPlus1, y,
+                            xPlus1, yPlus1,
+                            x, yPlus1
+                        }
+
+                        );
+
+                    //int p2x = xPlus1;
+                    //int p2y = y;
+                    //Vector3 p2 = new Vector3(p1TrueX + MapCellSize, heightMap[p2x, p2y], p1TrueY);
+                    //int p3x = xPlus1;
+                    //int p3y = yPlus1;
+                    //Vector3 p3 = new Vector3(p1TrueX + MapCellSize, heightMap[p3x, p3y], p1TrueY + MapCellSize);
+                    //int p4x = x;
+                    //int p4y = yPlus1;
+                    //Vector3 p4 = new Vector3(p1TrueX, heightMap[p4x, p4y], p1TrueY + MapCellSize);
+
+                    //VisibleShapes.Add(new Square(p1, p2, p3, p4));
+                    //ShapesColors.Add(Colors[valueMap[p4x, p4y]]);
                 }
             }
+
+
             for (int i = 0; i < _projectiles.Count; i++)
             {
                 Model model = _projectiles[i].Model;
