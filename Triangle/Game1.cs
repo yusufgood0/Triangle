@@ -1,14 +1,14 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using random_generation_in_a_pixel_grid;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using random_generation_in_a_pixel_grid;
 using static System.Collections.Specialized.BitVector32;
 namespace Triangle
 {
@@ -110,7 +110,7 @@ namespace Triangle
             _screenBuffer = new TextureBuffer(screenSize.X / pixelSize, screenSize.Y / pixelSize, Color.Transparent);
             Triangle.Initialize(_spriteBatch, _screenBuffer);
             Square.Initialize(_spriteBatch, _screenBuffer);
-
+            Mesh.Initialize(_spriteBatch, _screenBuffer);
             Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
             lightSource = new(MapCenter.X, -1000, MapCenter.Y);
             Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Y);
@@ -126,12 +126,22 @@ namespace Triangle
                 mapSize.X,
                 mapSize.Y,
                 new int[] { 9, 10 },
-                1000,
+                1500,
                 rnd.Next(1, int.MaxValue)
                 );
 
             for (int i = 0; i <= 5; i++) { seedMapper.SmoothenTerrain(); }
             seedMapper.SmoothenHeights(10);
+
+            for (int x = 0; x < seedMapper.width; x++)
+                for (int y = 0; y < seedMapper.width; y++)
+                {
+                    if (seedMapper.Values[x, y] == 0)
+                    {
+                        seedMapper.Heights[x, y] -= 400;
+                    }
+                }
+            seedMapper.SmoothenHeights(2);
 
 
         }
@@ -158,6 +168,7 @@ namespace Triangle
 
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
+            Mesh.UpdateConstants(FOV);
             for (int i = 0; i < _squareParticles.Count; i++)
             {
                 var particle = _squareParticles[i];
@@ -243,15 +254,20 @@ namespace Triangle
             List<Shape> VisibleShapes = new();
             List<Color> ShapesColors = new();
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
-            var heightMap = seedMapper.Heights;
+            var heightMap = new Vector3[seedMapper.height * seedMapper.width];
             var valueMap = seedMapper.Values;
-            var Colors = new Color[] { Color.Gray, Color.Green };
+            var Colors = new Color[] { Color.DarkSlateBlue, Color.DarkGreen * 1.2f };
 
             for (int y = 0; y < seedMapper.height; y++)
             {
-                for (int x = 0; x < seedMapper.width; x++) 
+                for (int x = 0; x < seedMapper.width; x++)
                 {
-
+                    int index = y * seedMapper.width + x;
+                    heightMap[index] = new Vector3(
+                        x * MapCellSize,
+                        seedMapper.Heights[x, y],
+                        y * MapCellSize
+                        );
                 }
             }
 
@@ -263,14 +279,13 @@ namespace Triangle
             int endIndexY = Math.Min(seedMapper.height - 1, playerTileIndex.Y + renderDistance);
             Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
             List<int[]> meshIndeces = new();
+            List<Color> meshColors = new();
             for (int y = startIndexY; y < endIndexY; y++)
             {
                 for (int x = startIndexX; x < endIndexX; x++)
                 {
-                    int p1TrueX = x * MapCellSize;
-                    int p1TrueY = y * MapCellSize;
-
-                    Vector3 p1 = new Vector3(p1TrueX, heightMap[x, y], p1TrueY);
+                    int index = y * seedMapper.width + x;
+                    Vector3 p1 = heightMap[index];
 
                     //if (!(Triangle.WorldPosToScreenPos(_player.EyePos, _player._angle.Y, _player._angle.X, p1, out Point screenPos) && screenRect.Contains(screenPos))) 
                     if (viewFrustrum.Contains(p1) == ContainmentType.Disjoint)
@@ -281,31 +296,29 @@ namespace Triangle
                     int yPlus1 = y + 1;
                     int xPlus1 = x + 1;
 
-
                     meshIndeces.Add(
                         new int[] {
-                            x, y,
-                            xPlus1, y,
-                            xPlus1, yPlus1,
-                            x, yPlus1
+                            index,
+                            index + 1,
+                            index + 1 + seedMapper.width,
+                            index + seedMapper.width
                         }
-
                         );
-
-                    //int p2x = xPlus1;
-                    //int p2y = y;
-                    //Vector3 p2 = new Vector3(p1TrueX + MapCellSize, heightMap[p2x, p2y], p1TrueY);
-                    //int p3x = xPlus1;
-                    //int p3y = yPlus1;
-                    //Vector3 p3 = new Vector3(p1TrueX + MapCellSize, heightMap[p3x, p3y], p1TrueY + MapCellSize);
-                    //int p4x = x;
-                    //int p4y = yPlus1;
-                    //Vector3 p4 = new Vector3(p1TrueX, heightMap[p4x, p4y], p1TrueY + MapCellSize);
-
-                    //VisibleShapes.Add(new Square(p1, p2, p3, p4));
-                    //ShapesColors.Add(Colors[valueMap[p4x, p4y]]);
+                    meshColors.Add(
+                        Colors[(int)valueMap[x, y]]
+                        );
                 }
             }
+            Mesh mesh = new Mesh(meshIndeces.ToArray(), heightMap);
+            mesh.Draw(
+                ref _screenBuffer, 
+                meshColors.ToArray(), 
+                _player.EyePos, 
+                _player._angle.Y, 
+                _player._angle.X, 
+                lightSource, 
+                Color.LightGoldenrodYellow
+                );
 
 
             for (int i = 0; i < _projectiles.Count; i++)

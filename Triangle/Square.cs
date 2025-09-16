@@ -129,8 +129,8 @@ namespace Triangle
             if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return as failed
 
             screenPos = new Point(
-                (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * _fov_scale * ScaleX),
-                (int)((rotatedrelativePos.Y / rotatedrelativePos.Z) * _fov_scale * ScaleY)
+                (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * ScaleX + _screenCenter.X),
+                (int)((rotatedrelativePos.Y / rotatedrelativePos.Z) * ScaleY + _screenCenter.Y)
             );
 
             return true;

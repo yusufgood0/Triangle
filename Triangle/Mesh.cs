@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,10 +11,8 @@ using System.Threading.Tasks;
 
 namespace Triangle
 {
-    internal struct Mesh
+    internal struct Mesh(int[][] Indices, Vector3[] Vertices)
     {
-        int[][] _indices;
-        Vector3[] _vertices;
         static Point _screenCenter;
         static Point _CachedscreenSize;
         static float _fov_scale;
@@ -34,37 +33,49 @@ namespace Triangle
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
-            Color color,
+            Color[] colors,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
-            int distance
+            Vector3 lightPos,
+            Color lightColor
             )
         {
-            Point[] Points = new Point[_vertices.Length];
-            for (int i = 0; i < _vertices.Length; i++)
+            Point[] Points = new Point[Vertices.Length];
+            for (int i = 0; i < Vertices.Length; i++)
             {
-                if (!WorldPosToScreenPos(cameraPosition, pitch, yaw, _vertices[i], out Points[i]))
-                {
-                    Points[i] = _errorPoint;
-                }
+                WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[i], out var Point);
+                Points[i] = Point;
             }
-            foreach (var indexes in _indices)
+            for (int i = 0; i < Indices.Length; i++)
             {
-                if (indexes.Length == 4)
-                {
-                    if (Points[indexes[0]] == _errorPoint)
-                        continue;
-                    if (Points[indexes[1]] == _errorPoint)
-                        continue;
-                    if (Points[indexes[2]] == _errorPoint)
-                        continue;
-                    if (Points[indexes[3]] == _errorPoint)
-                        continue;
-
-                    DrawSquare(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);
+                var indexes = Indices[i];
+                if (Points[indexes[0]] == _errorPoint)
                     continue;
-                }
+                if (Points[indexes[1]] == _errorPoint)
+                    continue;
+                if (Points[indexes[2]] == _errorPoint)
+                    continue;
+                if (Points[indexes[3]] == _errorPoint)
+                    continue;
+
+                Vector3 lightDirection = Vertices[indexes[0]] - lightPos;
+                lightDirection.Normalize();
+
+                Vector3 side1 = Vertices[indexes[0]] - Vertices[indexes[1]];
+                Vector3 side2 = Vertices[indexes[0]] - Vertices[indexes[2]];
+                Vector3 normalDir = Vector3.Cross(side1, side2);
+                normalDir.Normalize();
+
+                // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
+                float dotProduct = Vector3.Dot(-normalDir, lightDirection);
+
+                // mix colors based on the difference in rays
+                Color color = Color.Lerp(colors[i], lightColor, dotProduct/3);
+
+                int distance = (int)Vector3.Distance(cameraPosition, Vertices[indexes[0]]);
+                DrawSquare(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);
+                continue;
             }
 
         }
@@ -83,6 +94,7 @@ namespace Triangle
             Point p2 = Points[indexes[1]];
             Point p3 = Points[indexes[2]];
             Point p4 = Points[indexes[3]];
+
 
             /* calculates a bounding rectangle for the triangle */
             int xmin = Math.Max(General.min4(p1.X, p2.X, p3.X, p4.X), 0);
@@ -124,7 +136,7 @@ namespace Triangle
             Vector3 relativePos = objectPosition - cameraPosition;
             Vector3 rotatedrelativePos = General.RotateVector(relativePos, yaw, pitch);
 
-            if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return as failed
+            if (rotatedrelativePos.Z < 0) { screenPos = _errorPoint; return false; } // Object is behind the camera, return as failed
 
             screenPos = new Point(
                 (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * ScaleX + _screenCenter.X),
