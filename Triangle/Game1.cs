@@ -201,10 +201,29 @@ namespace Triangle
                 (int)(_player.Position.X / MapCellSize),
                 (int)(_player.Position.Z / MapCellSize)
                 );
-            var terrainHeightAtPlayerPosition = seedMapper.HeightAtPosition(_player.Position, MapCellSize) - Player.sizeY;
 
+            int terrainHeightAtPlayerPosition;
+
+            /* Find tile at player position */
+            int playerXIndex = (int)_player.Position.X / MapCellSize;
+            int playerYIndex = (int)_player.Position.Z / MapCellSize;
+
+
+            /* Bounds check */
+            if (playerXIndex >= 0 && playerYIndex >= 0 && playerXIndex < seedMapper.width && playerYIndex < seedMapper.height)
+            {
+                terrainHeightAtPlayerPosition = seedMapper.Heights[playerXIndex, playerYIndex] - Player.sizeY;
+            }
+            else
+            {
+                terrainHeightAtPlayerPosition = int.MinValue;
+            }
+
+            /* If player is below terrain, move them to terrain height */
             if (terrainHeightAtPlayerPosition < _player.Position.Y)
             {
+                _player.ApplyTerrainCollision(seedMapper.GetNormal(playerXIndex, playerYIndex));
+
                 _player.SetPosition(
                 new Vector3(
                     _player.Position.X,
@@ -311,12 +330,12 @@ namespace Triangle
             }
             Mesh mesh = new Mesh(meshIndeces.ToArray(), heightMap);
             mesh.Draw(
-                ref _screenBuffer, 
-                meshColors.ToArray(), 
-                _player.EyePos, 
-                _player._angle.Y, 
-                _player._angle.X, 
-                lightSource, 
+                ref _screenBuffer,
+                meshColors.ToArray(),
+                _player.EyePos,
+                _player._angle.Y,
+                _player._angle.X,
+                lightSource,
                 Color.LightGoldenrodYellow
                 );
 

@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 
 namespace random_generation_in_a_pixel_grid
 {
@@ -63,6 +64,26 @@ namespace random_generation_in_a_pixel_grid
                     spritebatch.End();
                 }
             }
+        }
+        public Vector3 GetNormal(int x, int y)
+        {
+            int xPlus1 = x + 1;
+            int yPlus1 = y + 1;
+            if (x <= 0 || y <= 0 || x >= width-2 || y >= height-2)
+            {
+                return Vector3.Down;
+            }
+
+            var p1 = new Vector3(x, Heights[x, y], y);
+            var p2 = new Vector3(xPlus1, Heights[xPlus1, y], y);
+            var p3 = new Vector3(xPlus1, Heights[xPlus1, yPlus1], yPlus1);
+
+            Vector3 side1 = p1 - p2;
+            Vector3 side2 = p1 - p3;
+            Vector3 normalDir = Vector3.Cross(side1, side2);
+            normalDir.Normalize();
+            return normalDir;
+
         }
         private int CountLandNeighbhors(int x, int y)
         {

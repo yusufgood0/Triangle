@@ -37,6 +37,22 @@ namespace Triangle
             PlayerCamera = camera;
             TryPullPositionFromArchive();
         }
+        public bool ApplyTerrainCollision(Vector3 normal)
+        {
+            var speed = _speed;
+            speed.Normalize();
+            float dot = Vector3.Dot(Vector3.Up, normal);
+            float AbsDot = Math.Abs(dot);
+            if (AbsDot < 0.07f)
+            {
+                //_speed.X *= Math.Min(AbsDot * 20, 1);
+                //_speed.Z *= Math.Min(AbsDot * 20, 1);
+                _speed += normal;
+                _position.Y += 1;
+                return true;
+            }
+            return false;
+        }
         public static void SetTexture(Texture2D texture)
         {
             _texture = texture;
