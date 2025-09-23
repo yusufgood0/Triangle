@@ -53,6 +53,22 @@ namespace Triangle
             }
             return false;
         }
+        //public void HitGround(Vector3 normal)
+        //{
+        //    var speed = _speed;
+        //    speed.Normalize();
+        //    float dot = Vector3.Dot(Vector3.Up, normal);
+        //    float AbsDot = Math.Abs(dot);
+        //    if (AbsDot < 0.07f)
+        //    {
+        //        normal = Vector3.Up;
+        //    }
+        //    if (_speed.Y > 15)
+        //    {
+        //        _speed = Vector3.Reflect(_speed, normal) * 1.5f;
+        //    }
+
+        //}
         public static void SetTexture(Texture2D texture)
         {
             _texture = texture;
@@ -126,35 +142,36 @@ namespace Triangle
             _speed.X += normalizedSpeed.X;
             _speed.Z += normalizedSpeed.Y;
 
-            _speed.X *= .90f;
+            _speed.X *= .97f;
             _speed.Y *= .99f;
-            _speed.Z *= .90f;
-            if (_speed.Y > 10)
-            {
-                _speed += dirVector * (_speed.Y / 30);
-            }
+            _speed.Z *= .97f;
+            _speed.Y += 0.2f;
+            //if (_speed.Y > 10)
+            //{
+            //    _speed += dirVector * (_speed.Y / 30);
+            //}
         }
         public void Dash()
         {
             _speed += dirVector * 40;
         }
-        public void HitGround(KeyboardState keyBoardState)
+        public void HitGround(KeyboardState keyBoardState, Vector3 normal)
         {
-            if (_speed.Y > 10 && keyBoardState.IsKeyUp(Keys.Space))
+            var length = _speed.Length();
+            if (keyBoardState.IsKeyUp(Keys.Space) && length > 10)
             {
-                _speed.Y = -_speed.Y * 0.4f;
-            }
-            else
-            {
-                _speed.Y = 9;
-            }
-            _speed.X *= 1.01f;
-            _speed.Z *= 1.01f;
+                //_speed.Y = -_speed.Y * 0.4f; //bounce
+                _speed = Vector3.Reflect(_speed, normal) * .7f;
+                _speed *= 1;
+                //_position +=normal * 0.1f;
 
+            }
+            _speed.X *= 0.95f;
+            _speed.Z *= 0.95f;
         }
         public void Jump()
         {
-            _speed.Y -= 30;
+            _speed.Y -= 40;
         }
         public void SetPosition(Vector3 vector)
         {
@@ -207,7 +224,7 @@ namespace Triangle
                     movement.Y += 1;
             }
 
-            _speed += movement * 2.5f;
+            _speed += movement * 1f;
         }
         public void SavePosition()
         {
@@ -259,15 +276,15 @@ namespace Triangle
             PlayerCamera.SetRotation(_angle.X, _angle.Y);
 
         }
-        public bool IsSurvival { get => gameMode == GameMode.Survival;}
-        public bool IsCreative { get => gameMode == GameMode.Creative;}
-        public Vector2 XZ { get => new(_position.X, _position.Z);}
-        public Vector3 Speed { get => _speed;}
-        public Vector3 Position { get => _position;}
+        public bool IsSurvival { get => gameMode == GameMode.Survival; }
+        public bool IsCreative { get => gameMode == GameMode.Creative; }
+        public Vector2 XZ { get => new(_position.X, _position.Z); }
+        public Vector3 Speed { get => _speed; }
+        public Vector3 Position { get => _position; }
         public Vector3 OppositeCorner => Position + new Vector3(sizeX, sizeY, sizeZ);
-        public Vector3 Center { get => _position + new Vector3(sizeX, sizeY, sizeZ) / 2;}
+        public Vector3 Center { get => _position + new Vector3(sizeX, sizeY, sizeZ) / 2; }
         public Vector3 EyePos => _position + new Vector3(sizeX / 2, 0, sizeZ / 2);
-        public Rectangle Rectangle { get => new((int)_position.X, (int)_position.Y, sizeX, sizeY);}
+        public Rectangle Rectangle { get => new((int)_position.X, (int)_position.Y, sizeX, sizeY); }
         //public Cube Cube { get => new(_position, sizeX, sizeY, sizeZ);}
         public Vector3 dirVector { get => General.angleToVector3(_angle); }
 

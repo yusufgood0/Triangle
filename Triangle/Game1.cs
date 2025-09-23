@@ -126,7 +126,7 @@ namespace Triangle
                 mapSize.X,
                 mapSize.Y,
                 new int[] { 9, 10 },
-                1500,
+                0,
                 rnd.Next(1, int.MaxValue)
                 );
 
@@ -220,9 +220,16 @@ namespace Triangle
             }
 
             /* If player is below terrain, move them to terrain height */
+            if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y )
+            {
+                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
+                {
+                    _player.Jump();
+                }
+            }
             if (terrainHeightAtPlayerPosition < _player.Position.Y)
             {
-                _player.ApplyTerrainCollision(seedMapper.GetNormal(playerXIndex, playerYIndex));
+                Vector3 normal = seedMapper.GetNormal(playerXIndex, playerYIndex);
 
                 _player.SetPosition(
                 new Vector3(
@@ -230,12 +237,10 @@ namespace Triangle
                     terrainHeightAtPlayerPosition,
                     _player.Position.Z
                 ));
-                _player.HitGround(_keyboardState);
-                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
-                {
-                    _player.Jump();
-                }
+                _player.HitGround(_keyboardState, normal);
+
             }
+
 
 
             if (_keyboardState.GetPressedKeyCount() > 0 || _previousKeyboardState.GetPressedKeyCount() > 0)
@@ -305,9 +310,16 @@ namespace Triangle
                 {
                     int index = y * seedMapper.width + x;
                     Vector3 p1 = heightMap[index];
+                    Vector3 p2 = heightMap[index + 1];
+                    Vector3 p3 = heightMap[index + 1 + seedMapper.width];
+                    Vector3 p4 = heightMap[index + seedMapper.width];
 
                     //if (!(Triangle.WorldPosToScreenPos(_player.EyePos, _player._angle.Y, _player._angle.X, p1, out Point screenPos) && screenRect.Contains(screenPos))) 
-                    if (viewFrustrum.Contains(p1) == ContainmentType.Disjoint)
+                    if (viewFrustrum.Contains(p1) == ContainmentType.Disjoint &&
+                        viewFrustrum.Contains(p2) == ContainmentType.Disjoint &&
+                        viewFrustrum.Contains(p3) == ContainmentType.Disjoint &&
+                        viewFrustrum.Contains(p4) == ContainmentType.Disjoint
+                        )
                     {
                         continue;
                     }
@@ -323,6 +335,7 @@ namespace Triangle
                             index + seedMapper.width
                         }
                         );
+
                     meshColors.Add(
                         Colors[(int)valueMap[x, y]]
                         );
