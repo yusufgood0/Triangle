@@ -155,23 +155,35 @@ namespace Triangle
         {
             _speed += dirVector * 40;
         }
+        DateTime lastHit = DateTime.Now;
         public void HitGround(KeyboardState keyBoardState, Vector3 normal)
         {
-            var length = _speed.Length();
-            if (keyBoardState.IsKeyUp(Keys.Space) && length > 10)
+            //normal.Y = -normal.Y;
+            if ((DateTime.Now - lastHit).TotalMilliseconds < 200)
+                return;
+
+            if (keyBoardState.IsKeyUp(Keys.Space) && 
+                _speed.Length() > 5
+                )
             {
                 //_speed.Y = -_speed.Y * 0.4f; //bounce
-                _speed = Vector3.Reflect(_speed, normal) * .7f;
-                _speed *= 1;
+                _speed = Vector3.Reflect(_speed, normal);
+                _speed.X = 5;
+                _speed.Y = 3;
+                _speed.Z = 5;
+                lastHit = DateTime.Now;
                 //_position +=normal * 0.1f;
-
             }
+            //else
+            //{
+            //    _speed.Y = 5;
+            //}
             _speed.X *= 0.95f;
             _speed.Z *= 0.95f;
         }
         public void Jump()
         {
-            _speed.Y -= 40;
+            _speed.Y = -40;
         }
         public void SetPosition(Vector3 vector)
         {

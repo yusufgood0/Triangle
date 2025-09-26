@@ -58,6 +58,8 @@ namespace Triangle
             /* resizes screen */
             screenSize.X = GraphicsDevice.Adapter.CurrentDisplayMode.Width;
             screenSize.Y = GraphicsDevice.Adapter.CurrentDisplayMode.Height;
+            //screenSize.X = 400;
+            //screenSize.Y = 400;
 
             _graphics.PreferredBackBufferWidth = screenSize.X;
             _graphics.PreferredBackBufferHeight = screenSize.Y;
@@ -126,7 +128,7 @@ namespace Triangle
                 mapSize.X,
                 mapSize.Y,
                 new int[] { 9, 10 },
-                0,
+                1500,
                 rnd.Next(1, int.MaxValue)
                 );
 
@@ -164,7 +166,7 @@ namespace Triangle
                 _player.Speed.Y * _player.Speed.Y +
                 _player.Speed.Z * _player.Speed.Z;
             int TargetScreenShake = (int)speedSquared / 200;
-            _screenShake = Math.Max(_screenShake - 1, TargetScreenShake);
+            _screenShake = Math.Clamp(_screenShake - 1, 0, TargetScreenShake);
 
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
@@ -205,8 +207,8 @@ namespace Triangle
             int terrainHeightAtPlayerPosition;
 
             /* Find tile at player position */
-            int playerXIndex = (int)_player.Position.X / MapCellSize;
-            int playerYIndex = (int)_player.Position.Z / MapCellSize;
+            int playerXIndex = (int)_player.Center.X / MapCellSize;
+            int playerYIndex = (int)_player.Center.Z / MapCellSize;
 
 
             /* Bounds check */
@@ -220,13 +222,6 @@ namespace Triangle
             }
 
             /* If player is below terrain, move them to terrain height */
-            if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y )
-            {
-                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
-                {
-                    _player.Jump();
-                }
-            }
             if (terrainHeightAtPlayerPosition < _player.Position.Y)
             {
                 Vector3 normal = seedMapper.GetNormal(playerXIndex, playerYIndex);
@@ -240,7 +235,13 @@ namespace Triangle
                 _player.HitGround(_keyboardState, normal);
 
             }
-
+            if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y)
+            {
+                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
+                {
+                    _player.Jump();
+                }
+            }
 
 
             if (_keyboardState.GetPressedKeyCount() > 0 || _previousKeyboardState.GetPressedKeyCount() > 0)
@@ -447,9 +448,11 @@ namespace Triangle
 
             _screenBuffer.applyDepth(800);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
+
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
             _spriteBatch.End();
+            Debug.WriteLine(_player.Speed.Length());
 
 
             screenTextureBuffer.Dispose();
