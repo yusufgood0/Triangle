@@ -133,23 +133,20 @@ namespace Triangle
         {
             if (IsSurvival)
             {
-                _speed.Y += 0.3f;
+                ApplyGravity();
             }
-            Vector2 normalizedSpeed = new();
             MoveKeyPressed(keyboardState);
-            normalizedSpeed = General.Normalize(normalizedSpeed, 1f);
-
-            _speed.X += normalizedSpeed.X;
-            _speed.Z += normalizedSpeed.Y;
-
+            Friction();
+        }
+        public void ApplyGravity()
+        {
+            _speed.Y += 0.5f;
+        }
+        public void Friction()
+        {
             _speed.X *= .97f;
             _speed.Y *= .99f;
             _speed.Z *= .97f;
-            _speed.Y += 0.2f;
-            //if (_speed.Y > 10)
-            //{
-            //    _speed += dirVector * (_speed.Y / 30);
-            //}
         }
         public void Dash()
         {
@@ -158,28 +155,21 @@ namespace Triangle
         DateTime lastHit = DateTime.Now;
         public void HitGround(KeyboardState keyBoardState, Vector3 normal)
         {
-            //normal.Y = -normal.Y;
-            if ((DateTime.Now - lastHit).TotalMilliseconds < 200)
-                return;
-
-            if (keyBoardState.IsKeyUp(Keys.Space) && 
-                _speed.Length() > 5
-                )
-            {
-                //_speed.Y = -_speed.Y * 0.4f; //bounce
-                _speed = Vector3.Reflect(_speed, normal);
-                _speed.X = 5;
-                _speed.Y = 3;
-                _speed.Z = 5;
-                lastHit = DateTime.Now;
-                //_position +=normal * 0.1f;
-            }
-            //else
-            //{
-            //    _speed.Y = 5;
-            //}
             _speed.X *= 0.95f;
             _speed.Z *= 0.95f;
+
+            if (keyBoardState.IsKeyUp(Keys.Space) &&
+                _speed.Y > 10 &&
+                (DateTime.Now - lastHit).TotalMilliseconds > 200
+                )
+            {
+                _speed = Vector3.Reflect(_speed, normal) * 2.5f;
+                lastHit = DateTime.Now;
+            }
+            else
+            {
+                _speed.Y = Math.Min(5, _speed.Y);
+            }
         }
         public void Jump()
         {

@@ -79,17 +79,16 @@ namespace random_generation_in_a_pixel_grid
             var p3 = new Vector3(x, Heights[x, yPlus1], yPlus1);
             var p4 = new Vector3(xPlus1, Heights[xPlus1, yPlus1], yPlus1);
 
-            Vector3 side1 = p1 - p2;
-            Vector3 side2 = p1 - p4;
-            Vector3 normalDir1 = Vector3.Cross(side1, side2);
+            Vector3 side2 = p1 - p2;
+            Vector3 side3 = p1 - p3;
+            Vector3 side4 = p1 - p4;
+            Vector3 normalDir1 = Vector3.Cross(side3, side4);
             normalDir1.Normalize();
 
-            Vector3 side3 = p1 - p3;
             Vector3 normalDir2 = Vector3.Cross(side3, side2);
             normalDir2.Normalize();
 
             Vector3 normalDir = (normalDir1 + normalDir2) / 2;
-
             return normalDir;
 
         }

@@ -225,15 +225,24 @@ namespace Triangle
             if (terrainHeightAtPlayerPosition < _player.Position.Y)
             {
                 Vector3 normal = seedMapper.GetNormal(playerXIndex, playerYIndex);
-
+                if (normal.Y < 0)
+                {
+                    normal *= -1;
+                }
+                _player.HitGround(_keyboardState, normal);
+                //var newVector = Vector3.Reflect(new Vector3(0, -1, 1), Vector3.Down);
+                //Debug.WriteLine($"{newVector.X}, {newVector.Y}, {newVector.Z}");
                 _player.SetPosition(
                 new Vector3(
                     _player.Position.X,
                     terrainHeightAtPlayerPosition,
                     _player.Position.Z
                 ));
-                _player.HitGround(_keyboardState, normal);
-
+                _squareParticles.Add(new SquareParticle(
+                    new Vector3(playerXIndex * MapCellSize, terrainHeightAtPlayerPosition + Player.sizeY, playerYIndex * MapCellSize),
+                    Color.SandyBrown,
+                    -normal * 50
+                    ));
             }
             if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y)
             {
