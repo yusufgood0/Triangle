@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Triangle.Enemies;
 using static System.Collections.Specialized.BitVector32;
 namespace Triangle
 {
