@@ -84,26 +84,16 @@ namespace Triangle
             fixed (int* screenBufferDistancePtr = screenBuffer.Distance)
                 for (int y = ymin; y < ymax; y++)
                 {
-                    bool FoundPixel = false;
                     int yTimesWidth = y * _CachedscreenSize.X;
                     for (int x = xmin; x < xmax; x++)
                     {
                         int index = yTimesWidth + x;
 
-                        if (IsPointInTriangle(x, y, p1, p2, p3, BYminusCY, AXminusCX, CXminusBX))
+                        if (distance <= screenBufferDistancePtr[index] &&
+                            IsPointInTriangle(x, y, p1, p2, p3, BYminusCY, AXminusCX, CXminusBX))
                         {
-                            FoundPixel = true;
-                            if (distance <= screenBufferDistancePtr[index])
-                            {
-                                screenBufferColorPtr[index] = color;
-                                screenBufferDistancePtr[index] = distance;
-                                continue;
-                            }
-                            continue;
-                        }
-                        if (FoundPixel == true)
-                        {
-                            break;
+                            screenBufferColorPtr[index] = color;
+                            screenBufferDistancePtr[index] = distance;
                         }
                     }
                 }

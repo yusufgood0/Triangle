@@ -55,19 +55,11 @@ namespace Triangle
         }
         //public void HitGround(Vector3 normal)
         //{
-        //    var speed = _speed;
-        //    speed.Normalize();
-        //    float dot = Vector3.Dot(Vector3.Up, normal);
-        //    float AbsDot = Math.Abs(dot);
-        //    if (AbsDot < 0.07f)
-        //    {
-        //        normal = Vector3.Up;
-        //    }
+
         //    if (_speed.Y > 15)
         //    {
         //        _speed = Vector3.Reflect(_speed, normal) * 1.5f;
         //    }
-
         //}
         public static void SetTexture(Texture2D texture)
         {
@@ -153,23 +145,28 @@ namespace Triangle
             _speed += dirVector * 40;
         }
         DateTime lastHit = DateTime.Now;
-        public void HitGround(KeyboardState keyBoardState, Vector3 normal)
+        public bool HitGround(KeyboardState keyBoardState, Vector3 normal)
         {
             _speed.X *= 0.95f;
             _speed.Z *= 0.95f;
 
-            if (keyBoardState.IsKeyUp(Keys.Space) &&
-                _speed.Y > 10 &&
-                (DateTime.Now - lastHit).TotalMilliseconds > 200
-                )
+            if (_speed.Y > 10 || keyBoardState.IsKeyDown(Keys.Space))
             {
-                _speed = Vector3.Reflect(_speed, normal) * 2.5f;
-                lastHit = DateTime.Now;
+                _speed.Y *= -0.6f;
+                return true;
             }
-            else
-            {
-                _speed.Y = Math.Min(5, _speed.Y);
-            }
+
+            //if (_speed.Y > 15 &&
+            //    (DateTime.Now - lastHit).TotalMilliseconds > 200
+            //    )
+            //{
+            //    _speed = Vector3.Reflect(_speed, normal) * 1f;
+            //    lastHit = DateTime.Now;
+            //    return true;
+            //}
+
+            _speed.Y = Math.Min(5, _speed.Y);
+            return false;
         }
         public void Jump()
         {
