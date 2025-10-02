@@ -9,7 +9,7 @@ namespace Triangle.Enemies
 {
     internal interface Enemy
     {
-        public void Update(in Player player, in Random rnd);
+        public void Update(in Player player, in Random rnd, ref BoundingBox[] collisionObject);
         public void EnemyHitPlayer(ref Player player);
         public void EnemyIsHit(ref Player player);
         public BoundingBox BoundingBox { get; }
