@@ -19,20 +19,21 @@ namespace Triangle.Enemies
                 )
             {
                 JumpTimer = DateTime.Now;
+                JumpAtPlayer(player.Position, rnd.Next(15, 50));
 
-                Vector3 dir = player.Position - _position;
-                dir.Y = 0;
-                dir.Normalize();
-                _speed += dir * 10;
-                _speed.Y = -15;
             }
+
+            _speed.Y += 0.3f;
             _position += _speed;
+
             int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize);
             if (heightAtPos < _position.Y)
             {
                 _position.Y = heightAtPos; 
-                _speed.Y = 0;
+                _speed.Y = Math.Max(0, _speed.Y);
             }
+
+            FormModel();
 
         }
         void Enemy.EnemyHitPlayer(ref Player player)
@@ -48,6 +49,7 @@ namespace Triangle.Enemies
         Model[] Enemy.models { get; }
         Vector3 Enemy.Position { get => _position; }
 
+
         private void CheckHeal(in Random rnd)
         {
             if ((HealTimer - DateTime.Now).TotalSeconds > 2)
@@ -55,6 +57,19 @@ namespace Triangle.Enemies
                 HealTimer = DateTime.Now;
                 _health = Math.Min(_health + rnd.Next(minHeal, maxHeal), MaxHealth);
             }
+        }
+        private void FormModel()
+        {
+            _model = new Cube(_position - new Vector3(Size) / 2, Size, Size, Size);
+        }
+        private void JumpAtPlayer(Vector3 playerPos, int jumpheight)
+        {
+            Vector3 dir = playerPos - _position;
+            dir.Y = 0;
+            dir.Normalize();
+            dir *= 10;
+            dir.Y = -jumpheight;
+            _speed += dir;
         }
 
         private const int Size = 25;
@@ -65,6 +80,7 @@ namespace Triangle.Enemies
         private Vector3 _position;
         private Vector3 _speed;
         private int _health;
+        private Cube _model;
         private DateTime HealTimer = DateTime.Now;
         private DateTime JumpTimer = DateTime.Now;
 

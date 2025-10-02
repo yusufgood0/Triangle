@@ -166,8 +166,15 @@ namespace Triangle
                 _player.Speed.X * _player.Speed.X +
                 _player.Speed.Y * _player.Speed.Y +
                 _player.Speed.Z * _player.Speed.Z;
-            int TargetScreenShake = (int)speedSquared / 200;
-            _screenShake = Math.Clamp(_screenShake - 1, 0, TargetScreenShake);
+            int TargetScreenShake = (int)speedSquared / 250;
+            if (_screenShake > TargetScreenShake)
+            {
+                _screenShake = Math.Max(_screenShake - 1, 0);
+            }
+            else if (_screenShake < TargetScreenShake)
+            {
+                _screenShake = Math.Min(_screenShake + 1, TargetScreenShake);
+            }
 
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
@@ -395,14 +402,30 @@ namespace Triangle
             Shape[] orbShapes = _crystalBall.Model.Shapes;
             VisibleShapes.AddRange(orbShapes);
 
+            /* Light source follows players crystal ball */
             lightSource = _crystalBall.Position;
 
-            _crystalBall.UpdateHighlights(rnd);
+            /* Updates orb color based on spellbook */
+            _crystalBall.UpdateHighlights();
+
+            /* Gets colors from spellbook */
             Color[] colors = _spellbook.ElementColors;
+
+            /* Blowly changes orb color to target color */
             int target = 200 - _spellbook.ElementsCount * 45;
-            if (_crystalBall.colorValue < target) _crystalBall.colorValue += 10;
-            else if (_crystalBall.colorValue > target) _crystalBall.colorValue -= 7;
+            if (_crystalBall.colorValue < target) 
+            { 
+                _crystalBall.colorValue = Math.Min(_crystalBall.colorValue + 5, target); 
+            }
+            else if (_crystalBall.colorValue > target)
+            {
+                _crystalBall.colorValue = Math.Max(_crystalBall.colorValue - 5, target);
+            }
+
+            /* Background color of orb */
             Color backGroundColor = new Color(_crystalBall.colorValue, 0, _crystalBall.colorValue);
+
+            /* Iterates and draws each triangle in the orb */
             for (int i = 0; i < orbShapes.Length; i++)
             {
                 int iPlusSwirlPosition = _crystalBall.SwirlPos + i;
@@ -459,6 +482,7 @@ namespace Triangle
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
             _spriteBatch.End();
+
             Debug.WriteLine(_player.Speed.Length());
 
 

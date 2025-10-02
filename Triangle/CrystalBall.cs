@@ -29,18 +29,9 @@ namespace Triangle
             Quaternion rotation = Quaternion.CreateFromYawPitchRoll(player._angle.X, -player._angle.Y, 0);
             _position = Vector3.Transform(orbOffset, rotation) + player.EyePos;
         }
-        public void UpdateHighlights(Random rnd)
+        public void UpdateHighlights()
         {
             _swirlPos = (_swirlPos + _swirlSpeed) % (SphereQuality * 3);
-            //if (_swirlPos > 100f || _swirlPos < -100f)
-            //{
-            //    _swirlSpeed = -_swirlSpeed;
-            
-            //for (int i = 0; i < _highlights.Length; i++)
-            //{
-            //    Quaternion rotation = Quaternion.CreateFromYawPitchRoll((float)rnd.NextDouble(), (float)rnd.NextDouble(), (float)rnd.NextDouble());
-            //    _highlights[0] = Vector3.Transform(_highlights[0], rotation);
-            //}
         }
     }
 }
