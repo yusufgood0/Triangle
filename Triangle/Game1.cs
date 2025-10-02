@@ -231,8 +231,6 @@ namespace Triangle
                     normal *= -1;
                 }
                 _player.HitGround(_keyboardState, normal);
-                //var newVector = Vector3.Reflect(new Vector3(0, -1, 1), Vector3.Down);
-                //Debug.WriteLine($"{newVector.X}, {newVector.Y}, {newVector.Z}");
                 _player.SetPosition(
                 new Vector3(
                     _player.Position.X,
@@ -362,7 +360,6 @@ namespace Triangle
                 lightSource,
                 Color.LightGoldenrodYellow
                 );
-
 
             for (int i = 0; i < _projectiles.Count; i++)
             {
