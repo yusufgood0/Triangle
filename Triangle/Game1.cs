@@ -41,6 +41,7 @@ namespace Triangle
         private int _screenShake;
         private Vector3 lightSource;
         private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
+        private List<Enemy> Enemies = new();
 
         private List<Action> KeyBinds = new();
 
@@ -118,6 +119,8 @@ namespace Triangle
             lightSource = new(MapCenter.X, -1000, MapCenter.Y);
             Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Y);
 
+            Enemies.Add(new Slime(PlayerPos));
+
             /* Initilize player object */
             _player = new Player(
                 PlayerPos,
@@ -191,6 +194,18 @@ namespace Triangle
                 }
                 particle.Float(4);
             }
+            for (int i = 0; i < Enemies.Count; i++)
+            {
+                var BoundingBox = new BoundingBox[] { };
+                Enemies[i].Update(in _player, in rnd, ref BoundingBox, seedMapper, MapCellSize);
+                if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 2000 * 2000)
+                {
+                    Enemies.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+            }
+
             for (int i = 0; i < _projectiles.Count; i++)
             {
                 var projectile = _projectiles[i];
@@ -383,7 +398,15 @@ namespace Triangle
                     }
                 }
             }
-            foreach (Model model in Models)
+
+            List<Model> allModels = new List<Model>(Models);
+
+            foreach (Enemy enemy in Enemies)
+            {
+                allModels.AddRange(enemy.models);
+            }
+
+            foreach (Model model in allModels)
             {
                 BoundingBox boundingBox = model.BoundingBox;
                 var value = viewFrustrum.Contains(boundingBox);
@@ -413,9 +436,9 @@ namespace Triangle
 
             /* Blowly changes orb color to target color */
             int target = 200 - _spellbook.ElementsCount * 45;
-            if (_crystalBall.colorValue < target) 
-            { 
-                _crystalBall.colorValue = Math.Min(_crystalBall.colorValue + 5, target); 
+            if (_crystalBall.colorValue < target)
+            {
+                _crystalBall.colorValue = Math.Min(_crystalBall.colorValue + 5, target);
             }
             else if (_crystalBall.colorValue > target)
             {

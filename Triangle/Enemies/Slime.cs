@@ -12,26 +12,32 @@ namespace Triangle.Enemies
     {
         void Enemy.Update(in Player player, in Random rnd, ref BoundingBox[] collisionObject, SeedMapper seedMap, int MapCellSize)
         {
+
+
             CheckHeal(in rnd);
-            if ((JumpTimer - DateTime.Now).TotalSeconds > 8 &&
-                _speed.Y == 0 &&
-                Enemy.CheckLineOfSight(_position, player.Position, ref collisionObject)
+
+            int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize) - Size;
+            if (heightAtPos < _position.Y)
+            {
+                _position.Y = heightAtPos;
+                _speed.Y = Math.Min(0, _speed.Y);
+            }
+
+            if ((DateTime.Now - JumpTimer).TotalSeconds > 1 &&
+                _speed.Y == 0
+                //Enemy.CheckLineOfSight(_position, player.Position, ref collisionObject)
                 )
             {
                 JumpTimer = DateTime.Now;
-                JumpAtPlayer(player.Position, rnd.Next(15, 50));
+                JumpAtPlayer(player.Position, rnd.Next(15, 20));
 
             }
 
             _speed.Y += 0.3f;
+            _speed *= 0.98f;
             _position += _speed;
 
-            int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize);
-            if (heightAtPos < _position.Y)
-            {
-                _position.Y = heightAtPos; 
-                _speed.Y = Math.Max(0, _speed.Y);
-            }
+            
 
             FormModel();
 
@@ -46,13 +52,26 @@ namespace Triangle.Enemies
         }
         BoundingBox Enemy.BoundingBox { get; }
         BoundingBox Enemy.Hitbox { get; }
-        Model[] Enemy.models { get; }
+        Model[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
 
 
+        
+
+        private const int Size = 250;
+        private const int MaxHealth = 125;
+        private const int minHeal = 15;
+        private const int maxHeal = 20;
+
+        private Vector3 _position;
+        private Vector3 _speed;
+        private int _health;
+        private Model[] _model = new Model[1];
+        private DateTime HealTimer = DateTime.Now;
+        private DateTime JumpTimer = DateTime.Now;
         private void CheckHeal(in Random rnd)
         {
-            if ((HealTimer - DateTime.Now).TotalSeconds > 2)
+            if ((DateTime.Now - HealTimer).TotalSeconds > 2)
             {
                 HealTimer = DateTime.Now;
                 _health = Math.Min(_health + rnd.Next(minHeal, maxHeal), MaxHealth);
@@ -60,7 +79,7 @@ namespace Triangle.Enemies
         }
         private void FormModel()
         {
-            _model = new Cube(_position - new Vector3(Size) / 2, Size, Size, Size);
+            _model[0] = new Cube(_position - new Vector3(Size / 2, Size, Size / 2), Size, Size, Size);
         }
         private void JumpAtPlayer(Vector3 playerPos, int jumpheight)
         {
@@ -71,24 +90,12 @@ namespace Triangle.Enemies
             dir.Y = -jumpheight;
             _speed += dir;
         }
-
-        private const int Size = 25;
-        private const int MaxHealth = 125;
-        private const int minHeal = 15;
-        private const int maxHeal = 20;
-
-        private Vector3 _position;
-        private Vector3 _speed;
-        private int _health;
-        private Cube _model;
-        private DateTime HealTimer = DateTime.Now;
-        private DateTime JumpTimer = DateTime.Now;
-
         public Slime(Vector3 position)
         {
             _position = position;
-            _speed = Vector3.Zero;
+            _speed = Vector3.Down * 5;
             _health = MaxHealth;
+            FormModel();
         }
 
     }
