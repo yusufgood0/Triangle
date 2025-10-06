@@ -198,7 +198,7 @@ namespace Triangle
             {
                 var BoundingBox = new BoundingBox[] { };
                 Enemies[i].Update(in _player, in rnd, ref BoundingBox, seedMapper, MapCellSize);
-                if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 2000 * 2000)
+                if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 20000 * 20000)
                 {
                     Enemies.RemoveAt(i);
                     i--;

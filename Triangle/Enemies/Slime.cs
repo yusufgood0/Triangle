@@ -12,32 +12,29 @@ namespace Triangle.Enemies
     {
         void Enemy.Update(in Player player, in Random rnd, ref BoundingBox[] collisionObject, SeedMapper seedMap, int MapCellSize)
         {
-
-
             CheckHeal(in rnd);
 
-            int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize) - Size;
+            int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize);
             if (heightAtPos < _position.Y)
             {
                 _position.Y = heightAtPos;
                 _speed.Y = Math.Min(0, _speed.Y);
+                _speed.X *= 0.7f;
             }
 
-            if ((DateTime.Now - JumpTimer).TotalSeconds > 1 &&
+            if ((DateTime.Now - JumpTimer).TotalSeconds > 3 &&
                 _speed.Y == 0
                 //Enemy.CheckLineOfSight(_position, player.Position, ref collisionObject)
                 )
             {
                 JumpTimer = DateTime.Now;
-                JumpAtPlayer(player.Position, rnd.Next(15, 20));
+                JumpAtPlayer(player.Position, rnd, jumpInfo);
 
             }
 
-            _speed.Y += 0.3f;
+            _speed.Y += 0.7f;
             _speed *= 0.98f;
             _position += _speed;
-
-            
 
             FormModel();
 
@@ -56,8 +53,11 @@ namespace Triangle.Enemies
         Vector3 Enemy.Position { get => _position; }
 
 
-        
 
+        private const int JumpStrength = 50;
+        private const int JumpMin = 30;
+        private const int JumpMax = 50;
+        private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
         private const int Size = 250;
         private const int MaxHealth = 125;
         private const int minHeal = 15;
@@ -81,12 +81,14 @@ namespace Triangle.Enemies
         {
             _model[0] = new Cube(_position - new Vector3(Size / 2, Size, Size / 2), Size, Size, Size);
         }
-        private void JumpAtPlayer(Vector3 playerPos, int jumpheight)
+        private void JumpAtPlayer(Vector3 playerPos, Random rnd, (int Min, int Max, int Strength) info)
+            => JumpAtPlayer(playerPos, rnd.Next(info.Min, info.Max), info.Strength);
+        private void JumpAtPlayer(Vector3 playerPos, int jumpheight, int jumpStrength)
         {
             Vector3 dir = playerPos - _position;
             dir.Y = 0;
             dir.Normalize();
-            dir *= 10;
+            dir *= jumpStrength;
             dir.Y = -jumpheight;
             _speed += dir;
         }
