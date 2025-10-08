@@ -11,7 +11,7 @@ namespace Triangle
 {
     internal struct Square : Shape
     {
-        Vector3 Shape.Position => Average;
+        Vector3 Shape.Position => AveragePos;
 
         public static (int, int, int)[] triangles = new (int, int, int)[]
                 {
@@ -26,7 +26,6 @@ namespace Triangle
         static float _fov_scale;
         static float ScaleX;
         static float ScaleY;
-        Vector3 Average;
         public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
         {
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
