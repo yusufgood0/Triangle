@@ -11,7 +11,7 @@ namespace Triangle
 {
     internal struct Square : Shape
     {
-        Vector3 Shape.Position => Vertices[0];
+        Vector3 Shape.Position => Average;
 
         public static (int, int, int)[] triangles = new (int, int, int)[]
                 {
@@ -25,10 +25,7 @@ namespace Triangle
         static float _fov_scale;
         static float ScaleX;
         static float ScaleY;
-        public Vector3 Average()
-        {
-            return (Vertices[0] + Vertices[1] + Vertices[2] + Vertices[3]) / 4;
-        }
+        Vector3 Average;
         public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
         {
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
@@ -67,6 +64,7 @@ namespace Triangle
             float distance12 = Vector3.DistanceSquared(p1, p2);
             float distance13 = Vector3.DistanceSquared(p1, p3);
             float distance14 = Vector3.DistanceSquared(p1, p4);
+            Average = (p1 + p2 + p3 + p4) / 4;
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,

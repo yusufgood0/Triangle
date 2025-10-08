@@ -20,24 +20,28 @@ namespace Triangle
             {
                 (0, 1, 3, 2), // Front face (from triangles (0,1,2) and (1,3,2))
                 (4, 5, 7, 6), // Back face (from triangles (4,5,6) and (5,7,6))
-                (0, 1, 5, 4), // Top face (from triangles (0,1,4) and (1,5,4))
+                (1, 0, 4, 5), // Top face (from triangles (0,1,4) and (1,5,4))
                 (2, 3, 7, 6), // Bottom face (from triangles (2,3,6) and (3,7,6))
                 (0, 2, 6, 4), // Left face (from triangles (0,2,4) and (2,6,4))
                 (1, 3, 7, 5)  // Right face (from triangles (1,3,5) and (3,7,5))
             };
+        /*
+         * TLF, TRF, BLF, BRF,
+         * TLB, TRB, BLB, BRB
+         */
         public Shape[] _cachedSquares = null;
         float xSize;
         float ySize;
         float zSize;
         public Vector3 Position { get => TLF; set => TLF = value; }
         public Vector3 TLF;
-        public Vector3 TRF => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z); 
-        public Vector3 BLF => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z); 
-        public Vector3 BRF => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z); 
-        public Vector3 TLB => new Vector3(TLF.X, TLF.Y, TLF.Z + zSize); 
-        public Vector3 TRB => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize); 
-        public Vector3 BLB => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize); 
-        public Vector3 BRB => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize); 
+        public Vector3 TRF => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z);
+        public Vector3 BLF => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z);
+        public Vector3 BRF => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z);
+        public Vector3 TLB => new Vector3(TLF.X, TLF.Y, TLF.Z + zSize);
+        public Vector3 TRB => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize);
+        public Vector3 BLB => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize);
+        public Vector3 BRB => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize);
         public Cube(Vector3 TLF, float xSize, float ySize, float zSize)
         {
             this.TLF = TLF;
@@ -99,22 +103,22 @@ namespace Triangle
         }
         public Shape[] CreateSquares()
         {
-            Vector3[] _vertices = new Vector3[]
-            {
-                TLF, TRF, BLF, BRF,
-                TLB, TRB, BLB, BRB
-            };
+
             if (_cachedSquares == null)
             {
+                Vector3[] _vertices = new Vector3[]
+                    {
+                        TLF, TRF, BLF, BRF,
+                        TLB, TRB, BLB, BRB
+                    };
                 _cachedSquares = new Shape[6];
                 for (int i = 0; i < 6; i++)
                 {
-                    ref var squareDef = ref Squares[i];
                     _cachedSquares[i] = new Square(
-                        _vertices[squareDef.a],
-                        _vertices[squareDef.b],
-                        _vertices[squareDef.c],
-                        _vertices[squareDef.d]
+                        _vertices[Squares[i].a],
+                        _vertices[Squares[i].b],
+                        _vertices[Squares[i].c],
+                        _vertices[Squares[i].d]
                     );
                 }
             }

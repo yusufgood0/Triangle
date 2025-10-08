@@ -55,13 +55,10 @@ namespace Triangle
 
         protected override void Initialize()
         {
-
+            
             /* resizes screen */
             screenSize.X = GraphicsDevice.Adapter.CurrentDisplayMode.Width;
             screenSize.Y = GraphicsDevice.Adapter.CurrentDisplayMode.Height;
-            //screenSize.X = 400;
-            //screenSize.Y = 400;
-
             _graphics.PreferredBackBufferWidth = screenSize.X;
             _graphics.PreferredBackBufferHeight = screenSize.Y;
             _graphics.ApplyChanges();
@@ -86,15 +83,15 @@ namespace Triangle
             }
             // */
 
-            /* randomly places many cubes around for testing  
-            int size = 40;
-            for (int x = 0; x < 25; x++)
+            /* randomly places many cubes around for testing  */ 
+            int size = 400;
+            for (int x = 0; x < 5; x++)
             {
-                for (int y = 0; y < 25; y++)
+                for (int y = 0; y < 5; y++)
                 {
-                    for (int z = 0; z < 25; z++)
+                    for (int z = 0; z < 5; z++)
                     {
-                        Models.Add(new Cube(new Vector3(size * x, size * y, size * z), size, size, size));
+                        Models.Add(new Cube(new Vector3(size * x * 2, size * y * -2, size * z * 2), size, size, size));
                     }
                 }
             }
