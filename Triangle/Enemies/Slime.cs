@@ -24,7 +24,8 @@ namespace Triangle.Enemies
                 JumpAtPlayer(player.Position, rnd.Next(15, 50));
             }
 
-            _speed.Y += 0.3f;
+            _speed.Y += 0.7f;
+            _speed *= 0.98f;
             _position += _speed;
 
             int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize);
@@ -47,7 +48,7 @@ namespace Triangle.Enemies
         }
         BoundingBox Enemy.BoundingBox { get; }
         BoundingBox Enemy.Hitbox { get; }
-        Model[] Enemy.models { get; }
+        Model[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
 
 
@@ -70,9 +71,25 @@ namespace Triangle.Enemies
         private DateTime HealTimer = DateTime.Now;
         private DateTime JumpTimer = DateTime.Now;
 
+
+        private const int JumpStrength = 50;
+        private const int JumpMin = 30;
+        private const int JumpMax = 50;
+        private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
+        private const int Size = 250;
+        private const int MaxHealth = 125;
+        private const int minHeal = 15;
+        private const int maxHeal = 20;
+
+        private Vector3 _position;
+        private Vector3 _speed;
+        private int _health;
+        private Model[] _model = new Model[1];
+        private DateTime HealTimer = DateTime.Now;
+        private DateTime JumpTimer = DateTime.Now;
         private void CheckHeal(in Random rnd)
         {
-            if ((HealTimer - DateTime.Now).TotalSeconds > 2)
+            if ((DateTime.Now - HealTimer).TotalSeconds > 2)
             {
                 HealTimer = DateTime.Now;
                 _health = Math.Min(_health + rnd.Next(minHeal, maxHeal), MaxHealth);
@@ -85,21 +102,23 @@ namespace Triangle.Enemies
             _model = newCube;
             _hitbox = new BoundingBox(newCube.Position, newCube.Opposite);
         }
-        private void JumpAtPlayer(Vector3 playerPos, int jumpheight)
+        private void JumpAtPlayer(Vector3 playerPos, Random rnd, (int Min, int Max, int Strength) info)
+            => JumpAtPlayer(playerPos, rnd.Next(info.Min, info.Max), info.Strength);
+        private void JumpAtPlayer(Vector3 playerPos, int jumpheight, int jumpStrength)
         {
             Vector3 dir = playerPos - _position;
             dir.Y = 0;
             dir.Normalize();
-            dir *= 10;
+            dir *= jumpStrength;
             dir.Y = -jumpheight;
             _speed += dir;
         }
-
         public Slime(Vector3 position)
         {
             _position = position;
-            _speed = Vector3.Zero;
+            _speed = Vector3.Down * 5;
             _health = MaxHealth;
+            FormModel();
         }
 
     }

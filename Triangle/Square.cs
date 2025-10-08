@@ -19,6 +19,7 @@ namespace Triangle
                     (1, 3, 4)
                 };
         public Vector3[] Vertices;
+        public Vector3 AveragePos;
         public Shape[] Triangles { get => Triangle.ModelConstructor(triangles, Vertices); }
         static Point _screenCenter;
         static Point _CachedscreenSize;
@@ -60,11 +61,7 @@ namespace Triangle
         public Square(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4)
         {
             Vertices = new Vector3[] { p1, p2, p3, p4 };
-
-            float distance12 = Vector3.DistanceSquared(p1, p2);
-            float distance13 = Vector3.DistanceSquared(p1, p3);
-            float distance14 = Vector3.DistanceSquared(p1, p4);
-            Average = (p1 + p2 + p3 + p4) / 4;
+            AveragePos = (p1 + p2 + p3 + p4) / 4;
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
