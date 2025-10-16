@@ -19,7 +19,10 @@ namespace Triangle
         public static int sizeZ = 30;
         Vector3 _position = new();
         Vector3 _speed = new();
-        public Vector2 _angle = Vector2.Zero;
+        public Vector2 Angle => _angle + _shake;
+        Vector2 _angle = Vector2.Zero;
+        Vector2 _shake = Vector2.Zero;
+        Vector2 _shakeDifference = Vector2.Zero;
         private static readonly string _saveDirectory = Path.Combine(Environment.CurrentDirectory, "PlayerInfo", "PlayerPos.txt");
         public Camera PlayerCamera { get; set; }
         public enum GameMode
@@ -128,6 +131,7 @@ namespace Triangle
             }
             MoveKeyPressed(keyboardState);
             Friction();
+            UpdateShake();
         }
         public void ApplyGravity()
         {
@@ -271,9 +275,27 @@ namespace Triangle
             _angle.X += (Mouse.GetState().X - screenSize.X / 2) * sensitivity;
             _angle.Y += (Mouse.GetState().Y - screenSize.Y / 2) * sensitivity;
             _angle.Y = MathHelper.Clamp(_angle.Y, -MathHelper.PiOver2 + 0.1f, MathHelper.PiOver2 - 0.1f);
-            PlayerCamera.SetRotation(_angle.X, _angle.Y);
+            PlayerCamera.SetRotation(Angle.X, Angle.Y);
 
         }
+        public void Shake(int intensity, Random rnd)
+        {
+            _shakeDifference = new (
+                (float)rnd.NextDouble() * rnd.Next(-intensity, intensity), 
+                (float)rnd.NextDouble() * rnd.Next(-intensity, intensity)
+                );
+        }
+        void UpdateShake()
+        {
+            _shake += (_shakeDifference - _shake) * 0.1f;
+            _shakeDifference *= 0.9f;
+            if (_shake.Length() < 0.1f)
+            {
+                _shake = Vector2.Zero;
+                _shakeDifference = Vector2.Zero;
+            }
+        }
+
         public bool IsSurvival { get => gameMode == GameMode.Survival; }
         public bool IsCreative { get => gameMode == GameMode.Creative; }
         public Vector2 XZ { get => new(_position.X, _position.Z); }
@@ -284,7 +306,7 @@ namespace Triangle
         public Vector3 EyePos => _position + new Vector3(sizeX / 2, 0, sizeZ / 2);
         public Rectangle Rectangle { get => new((int)_position.X, (int)_position.Y, sizeX, sizeY); }
         //public Cube Cube { get => new(_position, sizeX, sizeY, sizeZ);}
-        public Vector3 dirVector { get => General.angleToVector3(_angle); }
+        public Vector3 dirVector { get => General.angleToVector3(Angle); }
 
 
     }

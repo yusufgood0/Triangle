@@ -286,6 +286,7 @@ namespace Triangle
                     else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
                     {
                         _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
+                        _player.Shake(10, rnd);
                     }
                 }
 
@@ -374,8 +375,8 @@ namespace Triangle
                 ref _screenBuffer,
                 meshColors.ToArray(),
                 _player.EyePos,
-                _player._angle.Y,
-                _player._angle.X,
+                _player.Angle.Y,
+                _player.Angle.X,
                 lightSource,
                 Color.LightGoldenrodYellow
                 );
@@ -471,7 +472,7 @@ namespace Triangle
 
                 Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightGoldenrodYellow);
 
-                shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
+                shape.Draw(ref _screenBuffer, color, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance);
             }
 
             /* Draw Particles */
@@ -482,7 +483,7 @@ namespace Triangle
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
 
-                shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
+                shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance);
             }
 
             /* FPS Counter */

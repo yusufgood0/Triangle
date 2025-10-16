@@ -74,7 +74,11 @@ namespace Triangle
             Position = position;
             UpdateViewMatrix();
         }
-
+        public void SetAspectRatio(float aspectRatio)
+        {
+            AspectRatio = aspectRatio;
+            UpdateProjectionMatrix();
+        }
         // Rotates the camera (using a simple Yaw/Pitch method. Can be prone to gimbal lock if looking straight up/down)
         public void Rotate(float yaw, float pitch)
         {

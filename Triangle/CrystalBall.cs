@@ -26,7 +26,7 @@ namespace Triangle
 
         public void SetPosition(Player player)
         {
-            Quaternion rotation = Quaternion.CreateFromYawPitchRoll(player._angle.X, -player._angle.Y, 0);
+            Quaternion rotation = Quaternion.CreateFromYawPitchRoll(player.Angle.X, -player.Angle.Y, 0);
             _position = Vector3.Transform(orbOffset, rotation) + player.EyePos;
         }
         public void UpdateHighlights()
