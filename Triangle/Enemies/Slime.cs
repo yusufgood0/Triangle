@@ -62,8 +62,8 @@ namespace Triangle.Enemies
         {
 
         }
-        BoundingBox Enemy.BoundingBox { get; }
-        BoundingBox Enemy.Hitbox { get; }
+        BoundingBox Enemy.BoundingBox { get => _hitbox; }
+        BoundingBox Enemy.Hitbox { get => _hitbox; }
         Model[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
 

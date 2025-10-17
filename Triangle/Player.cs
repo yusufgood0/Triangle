@@ -140,7 +140,7 @@ namespace Triangle
         public void Friction()
         {
             _speed.X *= .97f;
-            _speed.Y *= .99f;
+            _speed.Y *= .995f;
             _speed.Z *= .97f;
         }
         public void Dash()
@@ -274,26 +274,44 @@ namespace Triangle
         {
             _angle.X += (Mouse.GetState().X - screenSize.X / 2) * sensitivity;
             _angle.Y += (Mouse.GetState().Y - screenSize.Y / 2) * sensitivity;
-            _angle.Y = MathHelper.Clamp(_angle.Y, -MathHelper.PiOver2 + 0.1f, MathHelper.PiOver2 - 0.1f);
+            _angle.Y = MathHelper.Clamp(_angle.Y, -MathHelper.PiOver2 + 0.01f, MathHelper.PiOver2 - 0.01f);
             PlayerCamera.SetRotation(Angle.X, Angle.Y);
 
         }
-        public void Shake(int intensity, Random rnd)
+        public void Knock(float intensity, Random rnd)
+        {
+            _shakeDifference = new(
+                (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity),
+                ((float)rnd.NextDouble() - 1f) / (1f / intensity)
+                );
+        }
+        public void Shake(Vector2 shakeDifference)
+        {
+            _shakeDifference = shakeDifference;
+        }
+        public void Shake(float intensity, Random rnd)
         {
             _shakeDifference = new (
-                (float)rnd.NextDouble() * rnd.Next(-intensity, intensity), 
-                (float)rnd.NextDouble() * rnd.Next(-intensity, intensity)
+                (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity),
+                (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity)
+                );
+        }
+        public void ShakeFull(float intensity, Random rnd)
+        {
+            _shakeDifference = new(
+                (2 * (float)rnd.Next(0, 2) - 1f) / (1f / intensity),
+                (2 * (float)rnd.Next(0, 2) - 1f) / (1f / intensity)
                 );
         }
         void UpdateShake()
         {
-            _shake += (_shakeDifference - _shake) * 0.1f;
-            _shakeDifference *= 0.9f;
-            if (_shake.Length() < 0.1f)
-            {
-                _shake = Vector2.Zero;
-                _shakeDifference = Vector2.Zero;
-            }
+            _shake += (_shakeDifference - _shake) * 0.06f;
+            _shakeDifference *= 0.91f;
+            //if (_shake.Length() < 0.05f)
+            //{
+            //    _shake = Vector2.Zero;
+            //    _shakeDifference = Vector2.Zero;
+            //}
         }
 
         public bool IsSurvival { get => gameMode == GameMode.Survival; }

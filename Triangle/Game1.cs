@@ -56,7 +56,7 @@ namespace Triangle
 
         protected override void Initialize()
         {
-            
+
             /* resizes screen */
             screenSize.X = GraphicsDevice.Adapter.CurrentDisplayMode.Width;
             screenSize.Y = GraphicsDevice.Adapter.CurrentDisplayMode.Height;
@@ -84,7 +84,7 @@ namespace Triangle
             }
             // */
 
-            /* randomly places many cubes around for testing  */ 
+            /* randomly places many cubes around for testing  */
             int size = 400;
             for (int x = 0; x < 5; x++)
             {
@@ -166,15 +166,9 @@ namespace Triangle
                 _player.Speed.X * _player.Speed.X +
                 _player.Speed.Y * _player.Speed.Y +
                 _player.Speed.Z * _player.Speed.Z;
-            int TargetScreenShake = (int)speedSquared / 250;
-            if (_screenShake > TargetScreenShake)
-            {
-                _screenShake = Math.Max(_screenShake - 1, 0);
-            }
-            else if (_screenShake < TargetScreenShake)
-            {
-                _screenShake = Math.Min(_screenShake + 1, TargetScreenShake);
-            }
+            float TargetScreenShake = speedSquared / 5000;
+            _player.Shake(TargetScreenShake, rnd);
+
 
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
@@ -280,13 +274,14 @@ namespace Triangle
                         if (_spellbook.ElementsCount == 3)
                         {
                             _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
+                            _player.Knock(3.5f, rnd);
+
                         }
                         _spellbook.AddElement((Element)action.Value);
                     }
                     else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
                     {
                         _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
-                        _player.Shake(10, rnd);
                     }
                 }
 
@@ -401,6 +396,7 @@ namespace Triangle
 
             foreach (Enemy enemy in Enemies)
             {
+                if (viewFrustrum.Contains(enemy.BoundingBox) != ContainmentType.Disjoint)
                 allModels.AddRange(enemy.models);
             }
 
@@ -495,7 +491,8 @@ namespace Triangle
             }
 
 
-            Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
+            //Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
+            Point shake = Point.Zero;
 
             _screenBuffer.applyDepth(800);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
