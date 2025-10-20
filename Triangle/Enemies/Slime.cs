@@ -15,8 +15,10 @@ namespace Triangle.Enemies
             CheckHeal(in rnd);
             double TimeSinceLastJump = this.TimeSinceLastJump;
 
-            _speed.Y += 0.7f;
-            _speed *= 0.975f;
+            _speed.Y += 1.5f;
+            _speed.X *= 0.975f;
+            _speed.Z *= 0.975f;
+            _speed.Y *= 0.99f;
             _position += _speed;
 
             int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize);
@@ -37,6 +39,10 @@ namespace Triangle.Enemies
                 if (JumpCooldown - TimeSinceLastJump < 1)
                 {
                     _squish = Math.Max(_squish - 5, -SquishFactorDown);
+                }
+                else
+                {
+                    _squish = Math.Max(_squish - 15, 0);
                 }
             }
             else if (_speed.Y != 0 && (DateTime.Now - TimeSinceGroundTimer).TotalSeconds > 1)
