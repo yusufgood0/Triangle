@@ -16,7 +16,9 @@ namespace Triangle.Enemies
             double TimeSinceLastJump = this.TimeSinceLastJump;
 
             _speed.Y += 1.5f;
-            _speed *= 0.975f;
+            _speed.X *= 0.975f;
+            _speed.Z *= 0.975f;
+            _speed.Y *= 0.99f;
             _position += _speed;
 
             int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize);
@@ -76,8 +78,8 @@ namespace Triangle.Enemies
             _speed += Vector3.Normalize(_position - source) * amount * knockBack;
             _health -= amount;
         }
-        BoundingBox Enemy.BoundingBox { get; }
-        BoundingBox Enemy.Hitbox { get; }
+        BoundingBox Enemy.BoundingBox { get => _hitbox; }
+        BoundingBox Enemy.Hitbox { get => _hitbox; }
         Model[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
 

@@ -56,7 +56,7 @@ namespace Triangle
 
         protected override void Initialize()
         {
-            
+
             /* resizes screen */
             screenSize.X = GraphicsDevice.Adapter.CurrentDisplayMode.Width;
             screenSize.Y = GraphicsDevice.Adapter.CurrentDisplayMode.Height;
@@ -84,7 +84,7 @@ namespace Triangle
             }
             // */
 
-            /* randomly places many cubes around for testing  */ 
+            /* randomly places many cubes around for testing  */
             int size = 400;
             for (int x = 0; x < 5; x++)
             {
@@ -289,6 +289,8 @@ namespace Triangle
                         if (_spellbook.ElementsCount == 3)
                         {
                             _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
+                            _player.Knock(3.5f, rnd);
+
                         }
                         _spellbook.AddElement((Element)action.Value);
                     }
@@ -383,8 +385,8 @@ namespace Triangle
                 ref _screenBuffer,
                 meshColors.ToArray(),
                 _player.EyePos,
-                _player._angle.Y,
-                _player._angle.X,
+                _player.Angle.Y,
+                _player.Angle.X,
                 lightSource,
                 Color.LightGoldenrodYellow
                 );
@@ -409,10 +411,8 @@ namespace Triangle
 
             foreach (Enemy enemy in Enemies)
             {
-                //if (_player.PlayerCamera.Frustum.Contains(enemy.BoundingBox) != ContainmentType.Disjoint)
-                {
-                    allModels.AddRange(enemy.models);
-                }
+                if (viewFrustrum.Contains(enemy.BoundingBox) != ContainmentType.Disjoint)
+                allModels.AddRange(enemy.models);
             }
 
             foreach (Model model in allModels)
@@ -483,7 +483,7 @@ namespace Triangle
 
                 Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightGoldenrodYellow);
 
-                shape.Draw(ref _screenBuffer, color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
+                shape.Draw(ref _screenBuffer, color, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance);
             }
 
             /* Draw Particles */
@@ -494,7 +494,7 @@ namespace Triangle
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
 
-                shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player._angle.Y, _player._angle.X, distance);
+                shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance);
             }
 
             /* FPS Counter */
@@ -506,7 +506,8 @@ namespace Triangle
             }
 
 
-            Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
+            //Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
+            Point shake = Point.Zero;
 
             _screenBuffer.applyDepth(800);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
