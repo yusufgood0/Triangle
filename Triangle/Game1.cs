@@ -117,6 +117,8 @@ namespace Triangle
             Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Y);
 
             Enemies.Add(new Slime(PlayerPos));
+            Enemies.Add(new Slime(PlayerPos));
+            Enemies.Add(new Slime(PlayerPos));
 
             /* Initilize player object */
             _player = new Player(
@@ -145,8 +147,6 @@ namespace Triangle
                     }
                 }
             seedMapper.SmoothenHeights(2);
-
-
         }
 
         protected override void Update(GameTime gameTime)
@@ -175,7 +175,16 @@ namespace Triangle
             {
                 _screenShake = Math.Min(_screenShake + 1, TargetScreenShake);
             }
-
+            foreach (Enemy enemy in Enemies)
+            {
+                foreach (Enemy enemy2 in Enemies)
+                {
+                    if (enemy.Hitbox.Intersects(enemy2.Hitbox))
+                    {
+                        enemy.Bounce(enemy2.Position);
+                    }
+                }
+            }
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
             Mesh.UpdateConstants(FOV);
@@ -400,7 +409,10 @@ namespace Triangle
 
             foreach (Enemy enemy in Enemies)
             {
-                allModels.AddRange(enemy.models);
+                //if (_player.PlayerCamera.Frustum.Contains(enemy.BoundingBox) != ContainmentType.Disjoint)
+                {
+                    allModels.AddRange(enemy.models);
+                }
             }
 
             foreach (Model model in allModels)
