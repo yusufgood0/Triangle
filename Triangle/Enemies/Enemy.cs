@@ -31,5 +31,6 @@ namespace Triangle.Enemies
         public BoundingBox Hitbox { get; }
         public Model[] models { get; }
         public Vector3 Position { get; }
+        public int Health { get; }
     }
 }

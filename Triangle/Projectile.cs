@@ -12,8 +12,10 @@ namespace Triangle
 {
     internal interface Projectile
     {
-
+        public TargetType TargetType { get; }
         public Model Model { get; }
+        public BoundingBox HitBox { get; }
+        public int HitDamage { get; }
         public Vector3 Velocity { get; }
         public Vector3 Position { get; }
         public Color Color { get; }
@@ -30,28 +32,48 @@ namespace Triangle
             return null;
         }
     }
+    public enum TargetType
+    {
+        Enemy = 0,
+        Player = 1,
+    }
     internal class FireBallProjectile(Vector3 Position, Vector3 DirVector, float SpeedMultiplier, float damageMultiplier) : Projectile
     {
+        TargetType Projectile.TargetType => TargetType.Enemy;
         Model Projectile.Model => _model.Move(_position);
+        BoundingBox Projectile.HitBox => _hitBox;
+        int Projectile.HitDamage => (int)(Damage * damageMultiplier);
         Vector3 Projectile.Velocity => _velocity;
         Vector3 Projectile.Position => _position;
         Color Projectile.Color => _colorState;
-
-        static Model _model = new Sphere(Vector3.Zero, 32, 5);
+        
+        const int Damage = 20;
+        const int ModelDetail = 5;
+        const int Radius = 32;
+        const int ExplosionSize = 100;
+        const float HitboxSizeMultiplier = 1.5f;
+        const int HitBoxSize = (int)(Radius*HitboxSizeMultiplier);
+        static Model _model = new Sphere(Vector3.Zero, Radius, ModelDetail);
+        static BoundingBox _hitBox = new BoundingBox(Vector3.Zero, Vector3.Zero);
         static Color[] _colors = new Color[] { Color.DarkRed, Color.Orange};
         Vector3 _velocity = DirVector * SpeedMultiplier;
         Vector3 _position = Position;
         Color _colorState = Color.Red;
-        static int _explosionSize = 100;
         public bool Move(SeedMapper seedMapper, int MapCellSize)
         {
             _velocity *= 1.05f;
             _position += _velocity;
+            ReformHitbox();
             if (seedMapper.HeightAtPosition(_position, MapCellSize) < _position.Y)
             {
                 return true;
             }
             return false;
+            
+        }
+        public void ReformHitbox()
+        {
+            _hitBox = new BoundingBox(_position - new Vector3(HitBoxSize), _position + new Vector3(HitBoxSize));
         }
         public SquareParticle? GetParticles(Random rnd)
         {
@@ -67,7 +89,7 @@ namespace Triangle
             var returnValue = new SquareParticle[rnd.Next(20, 50)];
             for (int i = 0; i < returnValue.Count(); i++)
             {
-                Vector3 particlePos = _position + new Vector3(rnd.Next(-_explosionSize, _explosionSize), rnd.Next(-_explosionSize, _explosionSize), rnd.Next(-_explosionSize, _explosionSize));
+                Vector3 particlePos = _position + new Vector3(rnd.Next(-ExplosionSize, ExplosionSize), rnd.Next(-ExplosionSize, ExplosionSize), rnd.Next(-ExplosionSize, ExplosionSize));
                 returnValue[i] = new SquareParticle(particlePos, _colorState, (particlePos - _position) / 10);
                 returnValue[i].Float(200);
             }

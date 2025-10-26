@@ -2,6 +2,7 @@
 using random_generation_in_a_pixel_grid;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -75,19 +76,21 @@ namespace Triangle.Enemies
         }
         void Enemy.EnemyIsHit(ref Player player, Vector3 source, int amount)
         {
-            _speed += Vector3.Normalize(_position - source) * amount * knockBack;
+            _speed += Vector3.Normalize(_position - source) * knockBackMultiplier * amount;
             _health -= amount;
+            Debug.WriteLine($"Slime hit! Health now {_health}");
         }
         BoundingBox Enemy.BoundingBox { get => _hitbox; }
         BoundingBox Enemy.Hitbox { get => _hitbox; }
         Model[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
+        int Enemy.Health { get => _health; }
 
 
 
-        private const int JumpStrength = 20;
-        private const int JumpMin = 10;
-        private const int JumpMax = 30;
+        private const int JumpStrength = 35;
+        private const int JumpMin = 5;
+        private const int JumpMax = 10;
         private const int JumpPatternLength = 2;
         private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
         private const int Size = 250;
@@ -99,7 +102,7 @@ namespace Triangle.Enemies
         private const float SquishFactorUp = 200;
         private const float SquishFactorDown = -100;
         private const float SquishFactorNormal = 50;
-        private const float knockBack = 2f;
+        private const float knockBackMultiplier = 1f;
 
         private Vector3 _position;
         private Vector3 _speed;

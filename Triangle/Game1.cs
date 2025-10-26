@@ -222,6 +222,40 @@ namespace Triangle
                     i--;
                     continue;
                 }
+                bool HitSomething = false;
+                if (projectile.TargetType == TargetType.Enemy)
+                {
+                    for (int j = 0; j < Enemies.Count; j++)
+                    {
+                        var enemy = Enemies[j];
+                        if (enemy.Hitbox.Intersects(projectile.HitBox))
+                        {
+                            Debug.WriteLine("Enemy Hit!");
+                            HitSomething = true;
+                            enemy.EnemyIsHit(ref _player, _player.Position, projectile.HitDamage);
+                            if (enemy.Health <= 0)
+                            {
+                                Enemies.RemoveAt(j--);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                else if (projectile.TargetType == TargetType.Player)
+                {
+                    if (projectile.HitBox.Intersects(_player.HitBox))
+                    {
+                        // Player hit logic
+                        HitSomething = true;
+                    }
+                }
+                if (HitSomething)
+                {
+                    _squareParticles.AddRange(projectile.HitGround(rnd));
+                    _projectiles.Remove(projectile);
+                    i--;
+                    continue;
+                }
 
                 var particle = projectile.GetParticles(rnd);
                 if (particle == null) { continue; }
@@ -412,7 +446,7 @@ namespace Triangle
             foreach (Enemy enemy in Enemies)
             {
                 if (viewFrustrum.Contains(enemy.BoundingBox) != ContainmentType.Disjoint)
-                allModels.AddRange(enemy.models);
+                    allModels.AddRange(enemy.models);
             }
 
             foreach (Model model in allModels)
@@ -516,7 +550,6 @@ namespace Triangle
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
             _spriteBatch.End();
 
-            Debug.WriteLine(_player.Speed.Length());
 
 
             screenTextureBuffer.Dispose();

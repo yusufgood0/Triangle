@@ -14,6 +14,8 @@ namespace Triangle
     internal class Player
     {
         static Texture2D _texture;
+        const int HitboxPadding = -8;
+        private static Vector3 HitboxPaddingVector3 = new Vector3(HitboxPadding);
         public static int sizeX = 30;
         public static int sizeY = 140;
         public static int sizeZ = 30;
@@ -316,6 +318,13 @@ namespace Triangle
 
         public bool IsSurvival { get => gameMode == GameMode.Survival; }
         public bool IsCreative { get => gameMode == GameMode.Creative; }
+        public BoundingBox HitBox
+        {
+            get => new BoundingBox(
+                _position - HitboxPaddingVector3,
+                _position + new Vector3(sizeX, sizeY, sizeZ) + HitboxPaddingVector3
+                );
+        }
         public Vector2 XZ { get => new(_position.X, _position.Z); }
         public Vector3 Speed { get => _speed; }
         public Vector3 Position { get => _position; }
