@@ -117,6 +117,8 @@ namespace Triangle
             Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Y);
 
             Enemies.Add(new Slime(PlayerPos));
+            Enemies.Add(new Slime(PlayerPos));
+            Enemies.Add(new Slime(PlayerPos));
 
             /* Initilize player object */
             _player = new Player(
@@ -174,10 +176,25 @@ namespace Triangle
                 _player.Speed.X * _player.Speed.X +
                 _player.Speed.Y * _player.Speed.Y +
                 _player.Speed.Z * _player.Speed.Z;
-            float TargetScreenShake = speedSquared / 5000;
-            _player.Shake(TargetScreenShake, rnd);
-
-
+            int TargetScreenShake = (int)speedSquared / 250;
+            if (_screenShake > TargetScreenShake)
+            {
+                _screenShake = Math.Max(_screenShake - 1, 0);
+            }
+            else if (_screenShake < TargetScreenShake)
+            {
+                _screenShake = Math.Min(_screenShake + 1, TargetScreenShake);
+            }
+            foreach (Enemy enemy in Enemies)
+            {
+                foreach (Enemy enemy2 in Enemies)
+                {
+                    if (enemy.Hitbox.Intersects(enemy2.Hitbox))
+                    {
+                        enemy.Bounce(enemy2.Position);
+                    }
+                }
+            }
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
             Mesh.UpdateConstants(FOV);
@@ -209,6 +226,40 @@ namespace Triangle
             {
                 var projectile = _projectiles[i];
                 if (projectile.Move(_seedMapper, MapCellSize))
+                {
+                    _squareParticles.AddRange(projectile.HitGround(rnd));
+                    _projectiles.Remove(projectile);
+                    i--;
+                    continue;
+                }
+                bool HitSomething = false;
+                if (projectile.TargetType == TargetType.Enemy)
+                {
+                    for (int j = 0; j < Enemies.Count; j++)
+                    {
+                        var enemy = Enemies[j];
+                        if (enemy.Hitbox.Intersects(projectile.HitBox))
+                        {
+                            Debug.WriteLine("Enemy Hit!");
+                            HitSomething = true;
+                            enemy.EnemyIsHit(ref _player, _player.Position, projectile.HitDamage);
+                            if (enemy.Health <= 0)
+                            {
+                                Enemies.RemoveAt(j--);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                else if (projectile.TargetType == TargetType.Player)
+                {
+                    if (projectile.HitBox.Intersects(_player.HitBox))
+                    {
+                        // Player hit logic
+                        HitSomething = true;
+                    }
+                }
+                if (HitSomething)
                 {
                     _squareParticles.AddRange(projectile.HitGround(rnd));
                     _projectiles.Remove(projectile);
@@ -405,7 +456,7 @@ namespace Triangle
             foreach (Enemy enemy in Enemies)
             {
                 if (viewFrustrum.Contains(enemy.BoundingBox) != ContainmentType.Disjoint)
-                allModels.AddRange(enemy.models);
+                    allModels.AddRange(enemy.models);
             }
 
             foreach (Model model in allModels)
@@ -509,7 +560,6 @@ namespace Triangle
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
             _spriteBatch.End();
 
-            Debug.WriteLine(_player.Speed.Length());
 
 
             screenTextureBuffer.Dispose();

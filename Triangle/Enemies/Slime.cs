@@ -2,6 +2,7 @@
 using random_generation_in_a_pixel_grid;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,78 +27,94 @@ namespace Triangle.Enemies
             {
                 _position.Y = heightAtPos;
                 _speed.Y = Math.Min(0, _speed.Y);
-                TimeSinceGroundTimer = DateTime.Now;
-
-                if (
-                    _squish <= -SquishFactorDown
-                   )
-                {
-                    JumpAtPlayer(player.Position);
-                    JumpTimer = DateTime.Now;
-                    TimeSinceGroundTimer = DateTime.MinValue;
-                }
+                onGround = true;
+            }
+            
+            if (onGround)
+            {
                 if (JumpCooldown - TimeSinceLastJump < 1)
                 {
-                    _squish = Math.Max(_squish - 5, -SquishFactorDown);
-                }
-                else
-                {
-                    _squish = Math.Max(_squish - 15, 0);
+                    _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(SquishFactorDown - _squish), 0.7f) * 0.5f, SquishFactorDown);
+                    if (_squish <= SquishFactorDown)
+                    {
+                        if (Vector3.DistanceSquared(_position, player.Position) > 400)
+                        {
+                            JumpAtPlayer(player.Position);
+                        }
+                        else if (_jumpPattern == JumpPatternLength)
+                        {
+                            JumpAtPlayer(player.Position, JumpMax * 3, JumpStrength);
+                            _jumpPattern = 0;
+                        }
+                        else
+                        {
+                            _jumpPattern++;
+                            JumpAtPlayer(player.Position, rnd.Next(JumpMin, JumpMax), JumpStrength);
+                        }
+                        onGround = false;
+                        JumpTimer = DateTime.Now;
+                    }
                 }
             }
-            else if (_speed.Y != 0 && (DateTime.Now - TimeSinceGroundTimer).TotalSeconds > 1)
+            else
             {
-                if (_speed.Y > 0)
-                {
-                    _squish = Math.Min(_squish + 25, SquishFactorUp);
-                }
-                else
-                {
-                    _squish = Math.Max(_squish - 35, 0);
-                }
+                _squish = Math.Clamp(_speed.Y * 5, SquishFactorDown, SquishFactorUp);
             }
 
             FormModel(TimeSinceLastJump);
 
         }
+        void Enemy.Bounce(Vector3 position)
+        {
+            var diff = _position - position;
+            if (diff == Vector3.Zero) diff = Vector3.Up;
+            _position += Vector3.Normalize(diff) * 1f;
+        }
         void Enemy.EnemyHitPlayer(ref Player player)
         {
 
         }
-        void Enemy.EnemyIsHit(ref Player player)
+        void Enemy.EnemyIsHit(ref Player player, Vector3 source, int amount)
         {
-
+            _speed += Vector3.Normalize(_position - source) * knockBackMultiplier * amount;
+            _health -= amount;
+            Debug.WriteLine($"Slime hit! Health now {_health}");
         }
         BoundingBox Enemy.BoundingBox { get => _hitbox; }
         BoundingBox Enemy.Hitbox { get => _hitbox; }
         Model[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
+        int Enemy.Health { get => _health; }
 
 
 
-        private const int JumpStrength = 30;
-        private const int JumpMin = 15;
-        private const int JumpMax = 40;
+        private const int JumpStrength = 35;
+        private const int JumpMin = 5;
+        private const int JumpMax = 10;
+        private const int JumpPatternLength = 2;
         private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
         private const int Size = 250;
+        private const int Damage = 20;
         private const int MaxHealth = 125;
         private const int minHeal = 15;
         private const int maxHeal = 20;
-        private const float JumpCooldown = 3;
-        private const float SquishFactorUp = 150;
-        private const float SquishFactorDown = 100;
+        private const float JumpCooldown = 2;
+        private const float SquishFactorUp = 200;
+        private const float SquishFactorDown = -100;
+        private const float SquishFactorNormal = 50;
+        private const float knockBackMultiplier = 1f;
 
         private Vector3 _position;
         private Vector3 _speed;
+        private bool onGround = false;
         private Model[] _model = new Model[1];
-        private float _squish;
+        private float _squish = SquishFactorNormal;
         private double TimeSinceLastJump => (DateTime.Now - JumpTimer).TotalSeconds;
         private int _health;
+        private int _jumpPattern = 0;
         private BoundingBox _hitbox;
         private DateTime HealTimer = DateTime.Now;
         private DateTime JumpTimer = DateTime.Now;
-        private DateTime TimeSinceGroundTimer = DateTime.Now;
-
 
 
         private void CheckHeal(in Random rnd)
@@ -130,14 +147,14 @@ namespace Triangle.Enemies
         {
             Vector3 dir = playerPos - _position;
 
-            _speed.Z += Math.Clamp(dir.Z * 0.025f, -800, 800);
-            _speed.X += Math.Clamp(dir.X * 0.025f, -800, 800);
-            _speed.Y += dir.Y * 0.075f;
+            _speed.Z += Math.Clamp(dir.Z * 0.05f, -50, 50);
+            _speed.X += Math.Clamp(dir.X * 0.05f, -50, 50);
+            _speed.Y += dir.Y * 0.2f - JumpMin;
         }
         public Slime(Vector3 position)
         {
             _position = position;
-            _speed = Vector3.Down * 50;
+            _speed = Vector3.Down * 25;
             _health = MaxHealth;
             FormModel(0);
         }
