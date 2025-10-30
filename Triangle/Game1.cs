@@ -191,7 +191,7 @@ namespace Triangle
                 {
                     if (enemy.Hitbox.Intersects(enemy2.Hitbox))
                     {
-                        enemy.Bounce(enemy2.Position);
+                        enemy.Knockback(enemy2.Position);
                     }
                 }
             }

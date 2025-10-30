@@ -33,8 +33,10 @@ namespace Triangle
         float xSize;
         float ySize;
         float zSize;
-        public Vector3 Position { get => TLF; set => TLF = value; }
+        Color Color;
+
         public Vector3 TLF;
+        public Vector3 Position { get => TLF; set => TLF = value; }
         public Vector3 TRF => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z);
         public Vector3 BLF => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z);
         public Vector3 BRF => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z);
@@ -42,12 +44,13 @@ namespace Triangle
         public Vector3 TRB => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize);
         public Vector3 BLB => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize);
         public Vector3 BRB => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize);
-        public Cube(Vector3 TLF, float xSize, float ySize, float zSize)
+        public Cube(Vector3 TLF, float xSize, float ySize, float zSize, Color color = new())
         {
             this.TLF = TLF;
             this.xSize = xSize;
             this.ySize = ySize;
             this.zSize = zSize;
+            this.Color = color;
         }
         public Shape[] GetTriangles
         {
@@ -71,6 +74,7 @@ namespace Triangle
             xSize = Cube.xSize;
             ySize = Cube.ySize;
             zSize = Cube.zSize;
+            Color = Cube.Color;
         }
         public Model Move(Vector3 offset)
         {
@@ -118,7 +122,8 @@ namespace Triangle
                         _vertices[Squares[i].a],
                         _vertices[Squares[i].b],
                         _vertices[Squares[i].c],
-                        _vertices[Squares[i].d]
+                        _vertices[Squares[i].d],
+                        Color
                     );
                 }
             }
