@@ -31,7 +31,7 @@ namespace Triangle
         private Texture2D screenTextureBuffer;
         private FramesPerSecondTimer framesPerSecondTimer = new();
         private SeedMapper _seedMapper;
-        private Point mapSize = new(800, 800);
+        private Point mapSize = new(400, 400);
         private Point playerTileIndex;
         private const int MapCellSize = 40;
         private List<Projectile> _projectiles = new List<Projectile>();
@@ -114,17 +114,10 @@ namespace Triangle
             Mesh.Initialize(_spriteBatch, _screenBuffer);
             Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
             lightSource = new(MapCenter.X, -1000, MapCenter.Y);
-            Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Y);
 
-            Enemies.Add(new Slime(PlayerPos));
-            Enemies.Add(new Slime(PlayerPos));
-            Enemies.Add(new Slime(PlayerPos));
 
-            /* Initilize player object */
-            _player = new Player(
-                PlayerPos,
-                new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f)
-                );
+            int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
+
 
             /* Load Map */
             Random rnd = new Random();
@@ -138,26 +131,52 @@ namespace Triangle
 
             int H = _seedMapper.height;
             int W = _seedMapper.width;
-            _seedMapper.SmoothenHeights(100);
+            _seedMapper.SmoothenHeights(20);
 
-            var (p1x, p1y) = (0, rnd.Next(0, H));
-            var (p2x, p2y) = (W, rnd.Next(0, H));
-            var (p3x, p3y) = (rnd.Next(0, W), 0);
-            var (p4x, p4y) = (rnd.Next(0, W), H);
-            if (rnd.Next(0, 2) == 1) { (p1x, p2x) = (p2x, p1x); }
-            if (rnd.Next(0, 2) == 1) { (p3y, p4y) = (p4y, p3y); }
-            _seedMapper.BezierSmoother(10,
+            for (int i = 0; i < 3; i++)
+            {
+                (p1x, p1y) = (0, rnd.Next(0, H));
+                (p2x, p2y) = (W, rnd.Next(0, H));
+                (p3x, p3y) = (rnd.Next(0, W), 0);
+                (p4x, p4y) = (rnd.Next(0, W), H);
+                if (rnd.Next(0, 2) == 1) { (p1x, p2x) = (p2x, p1x); }
+                if (rnd.Next(0, 2) == 1) { (p3y, p4y) = (p4y, p3y); }
+                _seedMapper.BezierSmoother(10,
+                    p1x, p1y,
+                    p2x, p2y,
+                    p3x, p3y,
+                    p4x, p4y
+                );
+            }
+            _seedMapper.SmoothenHeights(13);
+            _seedMapper.ApplySeaLevel(-50);
+
+
+
+            var (PlayerX, PlayerY) = _seedMapper.CubicBezier(0.1f,
                 p1x, p1y,
                 p2x, p2y,
                 p3x, p3y,
                 p4x, p4y
-            );
-            _seedMapper.SmoothenHeights(5);
+                );
+            var PlayerPos = new Vector3(
+                PlayerX * MapCellSize,
+                _seedMapper.Heights[PlayerX, PlayerY] + 50,
+                PlayerY * MapCellSize
+                );
 
-            _seedMapper.ApplySeaLevel(-10);
 
+            Enemies.Add(new Slime(PlayerPos));
+            Enemies.Add(new Slime(PlayerPos));
+            Enemies.Add(new Slime(PlayerPos));
+
+            /* Initilize player object */
+            _player = new Player(
+                PlayerPos,
+                new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f)
+                );
         }
-        
+
 
         protected override void Update(GameTime gameTime)
         {
@@ -379,7 +398,7 @@ namespace Triangle
             }
 
 
-            int renderDistance = 100;
+            int renderDistance = 200;
             int startIndexX = Math.Max(0, playerTileIndex.X - renderDistance);
             int startIndexY = Math.Max(0, playerTileIndex.Y - renderDistance);
             int endIndexX = Math.Min(_seedMapper.width - 1, playerTileIndex.X + renderDistance);

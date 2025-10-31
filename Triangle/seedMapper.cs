@@ -117,10 +117,10 @@ namespace random_generation_in_a_pixel_grid
             }
             return count;
         }
-        (int x, int y) CubicBezier(float t,
-    float x0, float x1, float x2, float x3,
-    float y0, float y1, float y2, float y3
-    )
+        public (int x, int y) CubicBezier(float t,
+            float x0, float x1, float x2, float x3,
+            float y0, float y1, float y2, float y3
+            )
         {
             double oneMinusT = 1 - t;
 
@@ -139,9 +139,9 @@ namespace random_generation_in_a_pixel_grid
         public void BezierSmoother(int Radius,
             float x0, float x1, float x2, float x3,
             float y0, float y1, float y2, float y3,
-            int softMaxHeight = 800,
-            int landVarianceMin = 15,
-            int landVarianceMax = 30
+            int softMaxHeight = 1000,
+            int landVarianceMin = 30,
+            int landVarianceMax = 40
             )
         {
             Random rnd = new Random();
@@ -185,7 +185,7 @@ namespace random_generation_in_a_pixel_grid
                     {
                         float num = x - posX;
                         float num2 = y - posY;
-                        int AdditionalHeight = MoundPeak - (int)Math.Pow(num * num + num2 * num2, 0.7f);
+                        int AdditionalHeight = MoundPeak - (int)Math.Pow(num * num + num2 * num2, 0.7f) - 10;
                         Heights[x, y] -= AdditionalHeight;
                     }
                 }
