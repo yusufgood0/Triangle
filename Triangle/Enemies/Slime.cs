@@ -37,20 +37,20 @@ namespace Triangle.Enemies
                     _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(SquishFactorDown - _squish), 0.7f) * 0.5f, SquishFactorDown);
                     if (_squish <= SquishFactorDown)
                     {
-                        if (Vector3.DistanceSquared(_position, player.Position) > 400)
-                        {
+                        //if (Vector3.DistanceSquared(_position, player.Position) > 40*40)
+                        //{
                             JumpAtPlayer(player.Position);
-                        }
-                        else if (_jumpPattern == JumpPatternLength)
-                        {
-                            JumpAtPlayer(player.Position, JumpMax * 3, JumpStrength);
-                            _jumpPattern = 0;
-                        }
-                        else
-                        {
-                            _jumpPattern++;
-                            JumpAtPlayer(player.Position, rnd.Next(JumpMin, JumpMax), JumpStrength);
-                        }
+                        //}
+                        //else if (_jumpPattern == JumpPatternLength)
+                        //{
+                        //    JumpAtPlayer(player.Position, JumpMax, JumpStrength);
+                        //    _jumpPattern = 0;
+                        //}
+                        //else
+                        //{
+                        //    _jumpPattern++;
+                        //    JumpAtPlayer(player.Position, rnd.Next(JumpMin, JumpMax), JumpStrength);
+                        //}
                         onGround = false;
                         JumpTimer = DateTime.Now;
                     }
@@ -64,7 +64,7 @@ namespace Triangle.Enemies
             FormModel(TimeSinceLastJump);
 
         }
-        void Enemy.Bounce(Vector3 position)
+        void Enemy.Knockback(Vector3 position)
         {
             var diff = _position - position;
             if (diff == Vector3.Zero) diff = Vector3.Up;
@@ -85,12 +85,13 @@ namespace Triangle.Enemies
         Model[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
         int Enemy.Health { get => _health; }
-
+        int Enemy.MaxHealth { get => MaxHealth; }
+        int Enemy.Height { get => Size; }
 
 
         private const int JumpStrength = 35;
-        private const int JumpMin = 5;
-        private const int JumpMax = 10;
+        private const int JumpMin = 50;
+        private const int JumpMax = 150;
         private const int JumpPatternLength = 2;
         private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
         private const int Size = 250;
@@ -128,7 +129,7 @@ namespace Triangle.Enemies
         private void FormModel(double TimeSinceLastJump)
         {
             float height = Size + _squish;
-            var newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size);
+            var newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size, Color.Purple);
             _model[0] = newCube;
             _hitbox = new BoundingBox(newCube.Position, newCube.Opposite);
         }
@@ -149,7 +150,7 @@ namespace Triangle.Enemies
 
             _speed.Z += Math.Clamp(dir.Z * 0.05f, -50, 50);
             _speed.X += Math.Clamp(dir.X * 0.05f, -50, 50);
-            _speed.Y += dir.Y * 0.02f - JumpMin;
+            _speed.Y += Math.Max(dir.Y * 0.1f - JumpMin, -100);
         }
         public Slime(Vector3 position)
         {

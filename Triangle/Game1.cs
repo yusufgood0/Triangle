@@ -30,8 +30,8 @@ namespace Triangle
         private TextureBuffer _screenBuffer;
         private Texture2D screenTextureBuffer;
         private FramesPerSecondTimer framesPerSecondTimer = new();
-        private SeedMapper seedMapper;
-        private Point mapSize = new(300, 300);
+        private SeedMapper _seedMapper;
+        private Point mapSize = new(400, 400);
         private Point playerTileIndex;
         private const int MapCellSize = 40;
         private List<Projectile> _projectiles = new List<Projectile>();
@@ -114,7 +114,57 @@ namespace Triangle
             Mesh.Initialize(_spriteBatch, _screenBuffer);
             Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
             lightSource = new(MapCenter.X, -1000, MapCenter.Y);
-            Vector3 PlayerPos = new(MapCenter.X, 0, MapCenter.Y);
+
+
+            int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
+
+
+            /* Load Map */
+            Random rnd = new Random();
+            _seedMapper = new SeedMapper(
+                mapSize.X,
+                mapSize.Y,
+                new int[] { 9, 10 },
+                0,
+                rnd.Next(1, int.MaxValue)
+                );
+
+            int H = _seedMapper.height;
+            int W = _seedMapper.width;
+            _seedMapper.SmoothenHeights(20);
+
+            for (int i = 0; i < 3; i++)
+            {
+                (p1x, p1y) = (0, rnd.Next(0, H));
+                (p2x, p2y) = (W, rnd.Next(0, H));
+                (p3x, p3y) = (rnd.Next(0, W), 0);
+                (p4x, p4y) = (rnd.Next(0, W), H);
+                if (rnd.Next(0, 2) == 1) { (p1x, p2x) = (p2x, p1x); }
+                if (rnd.Next(0, 2) == 1) { (p3y, p4y) = (p4y, p3y); }
+                _seedMapper.BezierSmoother(10,
+                    p1x, p1y,
+                    p2x, p2y,
+                    p3x, p3y,
+                    p4x, p4y
+                );
+            }
+            _seedMapper.SmoothenHeights(13);
+            _seedMapper.ApplySeaLevel(-50);
+
+
+
+            var (PlayerX, PlayerY) = _seedMapper.CubicBezier(0.1f,
+                p1x, p1y,
+                p2x, p2y,
+                p3x, p3y,
+                p4x, p4y
+                );
+            var PlayerPos = new Vector3(
+                PlayerX * MapCellSize,
+                _seedMapper.Heights[PlayerX, PlayerY] + 50,
+                PlayerY * MapCellSize
+                );
+
 
             Enemies.Add(new Slime(PlayerPos));
             Enemies.Add(new Slime(PlayerPos));
@@ -125,29 +175,8 @@ namespace Triangle
                 PlayerPos,
                 new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f)
                 );
-
-            /* Load Map */
-            seedMapper = new SeedMapper(
-                mapSize.X,
-                mapSize.Y,
-                new int[] { 9, 10 },
-                1500,
-                rnd.Next(1, int.MaxValue)
-                );
-
-            for (int i = 0; i <= 5; i++) { seedMapper.SmoothenTerrain(); }
-            seedMapper.SmoothenHeights(10);
-
-            for (int x = 0; x < seedMapper.width; x++)
-                for (int y = 0; y < seedMapper.width; y++)
-                {
-                    if (seedMapper.Values[x, y] == 0)
-                    {
-                        seedMapper.Heights[x, y] -= 400;
-                    }
-                }
-            seedMapper.SmoothenHeights(2);
         }
+
 
         protected override void Update(GameTime gameTime)
         {
@@ -181,7 +210,7 @@ namespace Triangle
                 {
                     if (enemy.Hitbox.Intersects(enemy2.Hitbox))
                     {
-                        enemy.Bounce(enemy2.Position);
+                        enemy.Knockback(enemy2.Position);
                     }
                 }
             }
@@ -203,7 +232,7 @@ namespace Triangle
             for (int i = 0; i < Enemies.Count; i++)
             {
                 var BoundingBox = new BoundingBox[] { };
-                Enemies[i].Update(in _player, in rnd, ref BoundingBox, seedMapper, MapCellSize);
+                Enemies[i].Update(in _player, in rnd, ref BoundingBox, _seedMapper, MapCellSize);
                 if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 20000 * 20000)
                 {
                     Enemies.RemoveAt(i);
@@ -215,7 +244,7 @@ namespace Triangle
             for (int i = 0; i < _projectiles.Count; i++)
             {
                 var projectile = _projectiles[i];
-                if (projectile.Move(seedMapper, MapCellSize))
+                if (projectile.Move(_seedMapper, MapCellSize))
                 {
                     _squareParticles.AddRange(projectile.HitGround(rnd));
                     _projectiles.Remove(projectile);
@@ -275,9 +304,9 @@ namespace Triangle
 
 
             /* Bounds check */
-            if (playerXIndex >= 0 && playerYIndex >= 0 && playerXIndex < seedMapper.width && playerYIndex < seedMapper.height)
+            if (playerXIndex >= 0 && playerYIndex >= 0 && playerXIndex < _seedMapper.width && playerYIndex < _seedMapper.height)
             {
-                terrainHeightAtPlayerPosition = seedMapper.Heights[playerXIndex, playerYIndex] - Player.sizeY;
+                terrainHeightAtPlayerPosition = _seedMapper.Heights[playerXIndex, playerYIndex] - Player.sizeY;
             }
             else
             {
@@ -287,7 +316,7 @@ namespace Triangle
             /* If player is below terrain, move them to terrain height */
             if (terrainHeightAtPlayerPosition < _player.Position.Y)
             {
-                Vector3 normal = seedMapper.GetNormal(playerXIndex, playerYIndex);
+                Vector3 normal = _seedMapper.GetNormal(playerXIndex, playerYIndex);
                 if (normal.Y < 0)
                 {
                     normal *= -1;
@@ -351,29 +380,29 @@ namespace Triangle
             List<Shape> VisibleShapes = new();
             List<Color> ShapesColors = new();
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
-            var heightMap = new Vector3[seedMapper.height * seedMapper.width];
-            var valueMap = seedMapper.Values;
+            var heightMap = new Vector3[_seedMapper.height * _seedMapper.width];
+            var valueMap = _seedMapper.Values;
             var Colors = new Color[] { Color.DarkSlateBlue, Color.DarkGreen * 1.2f };
 
-            for (int y = 0; y < seedMapper.height; y++)
+            for (int y = 0; y < _seedMapper.height; y++)
             {
-                for (int x = 0; x < seedMapper.width; x++)
+                for (int x = 0; x < _seedMapper.width; x++)
                 {
-                    int index = y * seedMapper.width + x;
+                    int index = y * _seedMapper.width + x;
                     heightMap[index] = new Vector3(
                         x * MapCellSize,
-                        seedMapper.Heights[x, y],
+                        _seedMapper.Heights[x, y],
                         y * MapCellSize
                         );
                 }
             }
 
 
-            int renderDistance = 100;
+            int renderDistance = 200;
             int startIndexX = Math.Max(0, playerTileIndex.X - renderDistance);
             int startIndexY = Math.Max(0, playerTileIndex.Y - renderDistance);
-            int endIndexX = Math.Min(seedMapper.width - 1, playerTileIndex.X + renderDistance);
-            int endIndexY = Math.Min(seedMapper.height - 1, playerTileIndex.Y + renderDistance);
+            int endIndexX = Math.Min(_seedMapper.width - 1, playerTileIndex.X + renderDistance);
+            int endIndexY = Math.Min(_seedMapper.height - 1, playerTileIndex.Y + renderDistance);
             Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
             List<int[]> meshIndeces = new();
             List<Color> meshColors = new();
@@ -381,11 +410,11 @@ namespace Triangle
             {
                 for (int x = startIndexX; x < endIndexX; x++)
                 {
-                    int index = y * seedMapper.width + x;
+                    int index = y * _seedMapper.width + x;
                     Vector3 p1 = heightMap[index];
                     Vector3 p2 = heightMap[index + 1];
-                    Vector3 p3 = heightMap[index + 1 + seedMapper.width];
-                    Vector3 p4 = heightMap[index + seedMapper.width];
+                    Vector3 p3 = heightMap[index + 1 + _seedMapper.width];
+                    Vector3 p4 = heightMap[index + _seedMapper.width];
 
                     //if (!(Triangle.WorldPosToScreenPos(_player.EyePos, _player._angle.Y, _player._angle.X, p1, out Point screenPos) && screenRect.Contains(screenPos))) 
                     if (viewFrustrum.Contains(p1) == ContainmentType.Disjoint &&
@@ -404,8 +433,8 @@ namespace Triangle
                         new int[] {
                             index,
                             index + 1,
-                            index + 1 + seedMapper.width,
-                            index + seedMapper.width
+                            index + 1 + _seedMapper.width,
+                            index + _seedMapper.width
                         }
                         );
 

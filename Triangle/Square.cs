@@ -11,6 +11,11 @@ namespace Triangle
 {
     internal struct Square : Shape
     {
+
+        public Vector3[] Vertices;
+        public Vector3 AveragePos;
+        public Color Color;
+        public Shape[] Triangles { get => Triangle.ModelConstructor(triangles, Vertices); }
         Vector3 Shape.Position => AveragePos;
 
         public static (int, int, int)[] triangles = new (int, int, int)[]
@@ -18,9 +23,6 @@ namespace Triangle
                     (1, 2, 3),
                     (1, 3, 4)
                 };
-        public Vector3[] Vertices;
-        public Vector3 AveragePos;
-        public Shape[] Triangles { get => Triangle.ModelConstructor(triangles, Vertices); }
         static Point _screenCenter;
         static Point _CachedscreenSize;
         static float _fov_scale;
@@ -57,10 +59,11 @@ namespace Triangle
             // mix colors based on the difference in rays
             return Color.Lerp(triangleColor, lightColor, dotProduct / 2);
         }
-        public Square(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4)
+        public Square(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4, Color color = new())
         {
             Vertices = new Vector3[] { p1, p2, p3, p4 };
             AveragePos = (p1 + p2 + p3 + p4) / 4;
+            Color = color;
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
