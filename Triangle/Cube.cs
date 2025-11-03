@@ -19,11 +19,11 @@ namespace Triangle
             };
         static (int a, int b, int c, int d)[] Squares = new (int, int, int, int)[]
             {
-                (0, 1, 3, 2), // Front face (from triangles (0,1,2) and (1,3,2))
+                (2, 3, 1, 0), // Front face (from triangles (0,1,2) and (1,3,2))
                 (4, 5, 7, 6), // Back face (from triangles (4,5,6) and (5,7,6))
-                (1, 0, 4, 5), // Top face (from triangles (0,1,4) and (1,5,4))
-                (2, 3, 7, 6), // Bottom face (from triangles (2,3,6) and (3,7,6))
-                (0, 2, 6, 4), // Left face (from triangles (0,2,4) and (2,6,4))
+                (5, 4, 0, 1), // Top face (from triangles (0,1,4) and (1,5,4))
+                (6, 7, 3, 2), // Bottom face (from triangles (2,3,6) and (3,7,6))
+                (4, 6, 2, 0), // Left face (from triangles (0,2,4) and (2,6,4))
                 (1, 3, 7, 5)  // Right face (from triangles (1,3,5) and (3,7,5))
             };
         /*

@@ -22,6 +22,9 @@ namespace Triangle
         private Point screenSize;
         private int pixelSize = 4;
         private float FOV = MathHelper.Pi / 1.5f;
+        private bool FillScreen = false;
+        Rectangle drawParemeters;
+        private float _sensitivity = 0.01f;
         private KeyboardState _keyboardState;
         private KeyboardState _previousKeyboardState;
         private MouseState _mouseState;
@@ -38,11 +41,9 @@ namespace Triangle
         private Random rnd = new Random();
         private SpellBook _spellbook = new SpellBook();
         private List<SquareParticle> _squareParticles = new();
-        private int _screenShake;
         private Vector3 lightSource;
         private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
         private List<Enemy> Enemies = new();
-
         private List<Action> KeyBinds = new();
 
         //private Texture2D blankTexture; //for testing purposes
@@ -63,6 +64,19 @@ namespace Triangle
             _graphics.PreferredBackBufferWidth = screenSize.X;
             _graphics.PreferredBackBufferHeight = screenSize.Y;
             _graphics.ApplyChanges();
+
+            if (FillScreen)
+            {
+                drawParemeters = new Rectangle(0, 0, screenSize.X, screenSize.Y);
+            }
+            else
+            {
+                int paddingx = Math.Max((screenSize.X - screenSize.Y) / 2, 0);
+                int paddingy = Math.Max((screenSize.Y - screenSize.X) / 2, 0);
+                int screenWidthHeight = Math.Min(screenSize.Y, screenSize.X);
+
+                drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
+            }
 
             /* Initilizes blank texture as a 1x1 white pixel texture 
             blankTexture = new Texture2D(GraphicsDevice, 1, 1);
@@ -141,6 +155,8 @@ namespace Triangle
                 (p4x, p4y) = (rnd.Next(0, W), H);
                 if (rnd.Next(0, 2) == 1) { (p1x, p2x) = (p2x, p1x); }
                 if (rnd.Next(0, 2) == 1) { (p3y, p4y) = (p4y, p3y); }
+                if (rnd.Next(0, 2) == 1) { (p1x, p2x) = (p4y, p3y); }
+                if (rnd.Next(0, 2) == 1) { (p2x, p1x) = (p4y, p3y); }
                 _seedMapper.BezierSmoother(10,
                     p1x, p1y,
                     p2x, p2y,
@@ -150,8 +166,6 @@ namespace Triangle
             }
             _seedMapper.SmoothenHeights(13);
             _seedMapper.ApplySeaLevel(-50);
-
-
 
             var (PlayerX, PlayerY) = _seedMapper.CubicBezier(0.1f,
                 p1x, p1y,
@@ -173,11 +187,14 @@ namespace Triangle
             /* Initilize player object */
             _player = new Player(
                 PlayerPos,
-                new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f)
+                new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f) //bloats FOV to ensure no clipping on camera
                 );
+
+
+            Square.UpdateConstants(FOV);
+            Triangle.UpdateConstants(FOV);
+            Mesh.UpdateConstants(FOV);
         }
-
-
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -188,22 +205,9 @@ namespace Triangle
 
             IsMouseVisible = !IsActive;
 
-            _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, screenSize, 0.01f);
+            _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, screenSize, _sensitivity);
             _player.Update(_keyboardState);
-            _player.Move(_player.Speed);
-            float speedSquared =
-                _player.Speed.X * _player.Speed.X +
-                _player.Speed.Y * _player.Speed.Y +
-                _player.Speed.Z * _player.Speed.Z;
-            int TargetScreenShake = (int)speedSquared / 250;
-            if (_screenShake > TargetScreenShake)
-            {
-                _screenShake = Math.Max(_screenShake - 1, 0);
-            }
-            else if (_screenShake < TargetScreenShake)
-            {
-                _screenShake = Math.Min(_screenShake + 1, TargetScreenShake);
-            }
+            
             foreach (Enemy enemy in Enemies)
             {
                 foreach (Enemy enemy2 in Enemies)
@@ -214,9 +218,6 @@ namespace Triangle
                     }
                 }
             }
-            Square.UpdateConstants(FOV);
-            Triangle.UpdateConstants(FOV);
-            Mesh.UpdateConstants(FOV);
             for (int i = 0; i < _squareParticles.Count; i++)
             {
                 var particle = _squareParticles[i];
@@ -240,7 +241,6 @@ namespace Triangle
                     continue;
                 }
             }
-
             for (int i = 0; i < _projectiles.Count; i++)
             {
                 var projectile = _projectiles[i];
@@ -286,7 +286,7 @@ namespace Triangle
                     continue;
                 }
 
-                var particle = projectile.GetParticles(rnd);
+                SquareParticle? particle = projectile.GetParticles(rnd);
                 if (particle == null) { continue; }
                 _squareParticles.Add((SquareParticle)particle);
             }
@@ -310,7 +310,7 @@ namespace Triangle
             }
             else
             {
-                terrainHeightAtPlayerPosition = int.MinValue;
+                terrainHeightAtPlayerPosition = int.MaxValue;
             }
 
             /* If player is below terrain, move them to terrain height */
@@ -334,15 +334,10 @@ namespace Triangle
                     -normal * 50
                     ));
             }
-            if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y)
+            if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y && General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
             {
-                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
-                {
                     _player.Jump();
-                }
             }
-
-
             if (_keyboardState.GetPressedKeyCount() > 0 || _previousKeyboardState.GetPressedKeyCount() > 0)
             {
                 foreach (Action action in KeyBinds)
@@ -351,15 +346,13 @@ namespace Triangle
                     {
                         if (_spellbook.ElementsCount == 3)
                         {
-                            _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
-                            _player.Knock(3.5f, rnd);
-
+                            _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
                         }
                         _spellbook.AddElement((Element)action.Value);
                     }
                     else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
                     {
-                        _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles, ref _screenShake);
+                        _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
                     }
                 }
 
@@ -406,7 +399,7 @@ namespace Triangle
             Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
             List<int[]> meshIndeces = new();
             List<Color> meshColors = new();
-
+            Mesh TargetMesh;
 
             for (int y = startIndexY; y < endIndexY; y++)
             {
@@ -444,8 +437,8 @@ namespace Triangle
                         );
                 }
             }
-            Mesh mesh = new Mesh(meshIndeces.ToArray(), heightMap);
-            mesh.Draw(
+            TargetMesh = new Mesh(meshIndeces.ToArray(), heightMap);
+            TargetMesh.Draw(
                 ref _screenBuffer,
                 meshColors.ToArray(),
                 _player.EyePos,
@@ -490,6 +483,8 @@ namespace Triangle
 
             /* Light source follows players crystal ball */
             lightSource = _crystalBall.Position;
+
+            /* Moves Colors on the CrystalBall */
             _crystalBall.UpdateHighlights(_spellbook);
 
             /* Draw Shapes */
@@ -524,9 +519,10 @@ namespace Triangle
                 Debug.WriteLine("FPS: " + framesPerSecondTimer.FPS);
             }
 
+            
 
-            //Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
-            Point shake = Point.Zero;
+
+            GraphicsDevice.Clear(Color.Black);
 
             // Prepare screen texture
             _screenBuffer.applyDepth(800);
@@ -534,10 +530,10 @@ namespace Triangle
 
             // Draw to screen
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
+            _spriteBatch.Draw(screenTextureBuffer, drawParemeters, Color.White);
             _spriteBatch.End();
 
-            // Cleanup after dawuing
+            // Cleanup after drawing
             screenTextureBuffer.Dispose();
             _screenBuffer.Clear(Color.DarkSlateBlue);
 

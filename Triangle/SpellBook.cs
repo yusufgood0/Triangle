@@ -19,6 +19,7 @@ namespace Triangle
     }
     internal class SpellBook()
     {
+        Element?[] _elements = new Element?[_maxElements];
         public int ElementsCount
         {
             get
@@ -41,13 +42,13 @@ namespace Triangle
             _elements[2] == null ? Color.Black: GetElementColor((Element)_elements[2]),
 
         };
-        const int _maxElements = 3;
-        Element?[] _elements = new Element?[_maxElements];
         static Dictionary<int, Spell> Spells = new Dictionary<int, Spell>()
         {
             { FireBall.SpellIdentity, new FireBall() },
             { Dash.SpellIdentity, new Dash() },
         };
+        const int _maxElements = 3;
+        static Random rnd = new Random();
         public Color GetElementColor(Element element)
         {
             return element switch
@@ -73,11 +74,11 @@ namespace Triangle
                 }
             }
         }
-        public void TryCast(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
+        public void TryCast(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
         {
             if (ElementsCount == 3)
             {
-                CastSpell(projectiles, ref player, ref squareParticles, ref screenShake);
+                CastSpell(projectiles, ref player, ref squareParticles);
             }
 
             for (int j = 0; j < _elements.Length; j++)
@@ -85,7 +86,7 @@ namespace Triangle
                 _elements[j] = null;
             }
         }
-        private void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
+        private void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
         {
             int spellIdentity = ConvertSpellIndex(
                 (Element)_elements[0],
@@ -94,7 +95,9 @@ namespace Triangle
                 );
             if (Spells.ContainsKey(spellIdentity))
             {
+
                 Spells[spellIdentity].CastSpell(projectiles, ref player, ref squareParticles);
+                player.Recoil(Spells[spellIdentity].Recoil, rnd);
             }
 
         }
@@ -105,6 +108,7 @@ namespace Triangle
         internal interface Spell
         {
             int SpellIdentity { get; }
+            float Recoil { get; }
             public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
             {
 
@@ -113,6 +117,7 @@ namespace Triangle
         internal class FireBall : Spell
         {
             int Spell.SpellIdentity => SpellIdentity;
+            float Spell.Recoil => 3f;
             public static int SpellIdentity = ConvertSpellIndex(Element.Fire, Element.Fire, Element.Fire);
             public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
             {
@@ -126,6 +131,7 @@ namespace Triangle
         internal class Dash : Spell
         {
             int Spell.SpellIdentity => SpellIdentity;
+            float Spell.Recoil => 1f;
             public static int SpellIdentity = ConvertSpellIndex(Element.Air, Element.Air, Element.Air);
             public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
             {
@@ -136,6 +142,7 @@ namespace Triangle
         internal class FireBurst : Spell
         {
             int Spell.SpellIdentity => SpellIdentity;
+            float Spell.Recoil => 1.5f;
             public static int SpellIdentity = ConvertSpellIndex(Element.Fire, Element.Fire, Element.Air);
             public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
             {

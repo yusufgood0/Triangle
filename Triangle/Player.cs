@@ -134,10 +134,11 @@ namespace Triangle
             MoveKeyPressed(keyboardState);
             Friction();
             UpdateShake();
+            Move(Speed);
         }
         public void ApplyGravity()
         {
-            _speed.Y += 0.5f;
+            _speed.Y += 0.8f;
         }
         public void Friction()
         {
@@ -280,7 +281,7 @@ namespace Triangle
             PlayerCamera.SetRotation(Angle.X, Angle.Y);
 
         }
-        public void Knock(float intensity, Random rnd)
+        public void Recoil(float intensity, Random rnd)
         {
             _shakeDifference = new(
                 (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity),
