@@ -149,7 +149,7 @@ namespace Triangle.Enemies
 
             _speed.Z += Math.Clamp(dir.Z * 0.05f, -50, 50);
             _speed.X += Math.Clamp(dir.X * 0.05f, -50, 50);
-            _speed.Y += dir.Y * 0.2f - JumpMin;
+            _speed.Y += dir.Y * 0.02f - JumpMin;
         }
         public Slime(Vector3 position)
         {
