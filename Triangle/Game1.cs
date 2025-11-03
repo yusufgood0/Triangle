@@ -377,7 +377,7 @@ namespace Triangle
 
             DateTime startTime = DateTime.Now;
 
-            List<Shape> VisibleShapes = new();
+            List<Shape> visibleShapes = new();
             List<Color> ShapesColors = new();
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = new Vector3[_seedMapper.height * _seedMapper.width];
@@ -406,6 +406,8 @@ namespace Triangle
             Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
             List<int[]> meshIndeces = new();
             List<Color> meshColors = new();
+
+
             for (int y = startIndexY; y < endIndexY; y++)
             {
                 for (int x = startIndexX; x < endIndexX; x++)
@@ -435,11 +437,10 @@ namespace Triangle
                             index + 1,
                             index + 1 + _seedMapper.width,
                             index + _seedMapper.width
-                        }
+                            }
                         );
-
                     meshColors.Add(
-                        Colors[(int)valueMap[x, y]]
+                        Colors[valueMap[x, y]]
                         );
                 }
             }
@@ -454,99 +455,54 @@ namespace Triangle
                 Color.LightGoldenrodYellow
                 );
 
+            List<Model> allModels = new List<Model>(Models);
+
             for (int i = 0; i < _projectiles.Count; i++)
             {
                 Model model = _projectiles[i].Model;
-                BoundingBox boundingBox = model.BoundingBox;
-                var value = viewFrustrum.Contains(boundingBox);
-                if (value != ContainmentType.Disjoint)
-                {
-                    Shape[] shapes = model.Shapes;
-                    VisibleShapes.AddRange(shapes);
-                    for (int j = 0; j < shapes.Length; j++)
-                    {
-                        ShapesColors.Add(_projectiles[i].Color);
-                    }
-                }
+                allModels.Add(model);
             }
-
-            List<Model> allModels = new List<Model>(Models);
 
             foreach (Enemy enemy in Enemies)
             {
-                if (viewFrustrum.Contains(enemy.BoundingBox) != ContainmentType.Disjoint)
+                bool inView = viewFrustrum.Contains(enemy.Hitbox) != ContainmentType.Disjoint;
+                if (inView)
+                {
                     allModels.AddRange(enemy.models);
+                }
+                visibleShapes.AddRange(enemy.GetHealthBar(_player));
             }
 
             foreach (Model model in allModels)
             {
                 BoundingBox boundingBox = model.BoundingBox;
-                var value = viewFrustrum.Contains(boundingBox);
-                if (value != ContainmentType.Disjoint)
+                bool inView = ContainmentType.Disjoint != viewFrustrum.Contains(boundingBox);
+                if (inView)
                 {
                     Shape[] shapes = model.Shapes;
-                    VisibleShapes.AddRange(shapes);
-                    for (int i = 0; i < shapes.Length; i++)
-                    {
-                        ShapesColors.Add(Color.DarkGray);
-                    }
+                    visibleShapes.AddRange(shapes);
                 }
             }
 
             _crystalBall.SetPosition(_player);
-            Shape[] orbShapes = _crystalBall.Model.Shapes;
-            VisibleShapes.AddRange(orbShapes);
+            Shape[] orbShapes = _crystalBall.GetRenderModel(_spellbook);
+            visibleShapes.AddRange(orbShapes);
 
             /* Light source follows players crystal ball */
             lightSource = _crystalBall.Position;
-
-            /* Updates orb color based on spellbook */
-            _crystalBall.UpdateHighlights();
-
-            /* Gets colors from spellbook */
-            Color[] colors = _spellbook.ElementColors;
-
-            /* Blowly changes orb color to target color */
-            int target = 200 - _spellbook.ElementsCount * 45;
-            if (_crystalBall.colorValue < target)
-            {
-                _crystalBall.colorValue = Math.Min(_crystalBall.colorValue + 5, target);
-            }
-            else if (_crystalBall.colorValue > target)
-            {
-                _crystalBall.colorValue = Math.Max(_crystalBall.colorValue - 5, target);
-            }
-
-            /* Background color of orb */
-            Color backGroundColor = new Color(_crystalBall.colorValue, 0, _crystalBall.colorValue);
-
-            /* Iterates and draws each triangle in the orb */
-            for (int i = 0; i < orbShapes.Length; i++)
-            {
-                int iPlusSwirlPosition = _crystalBall.SwirlPos + i;
-                int columns = CrystalBall.SphereQuality + 1;
-                int lerpAmount = iPlusSwirlPosition % columns;
-                int colorIndex = iPlusSwirlPosition / columns % 3;
-                Color color = colors[colorIndex];
-                if (color == Color.Black)
-                {
-                    ShapesColors.Add(backGroundColor);
-                    continue;
-                }
-                ShapesColors.Add(Color.Lerp(color, backGroundColor, lerpAmount / (float)columns));
-            }
+            _crystalBall.UpdateHighlights(_spellbook);
 
             /* Draw Shapes */
-            for (int i = 0; i < VisibleShapes.Count; i++)
+            for (int i = 0; i < visibleShapes.Count; i++)
             {
-                Shape shape = VisibleShapes[i];
+                Shape shape = visibleShapes[i];
 
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
 
-                Color color = shape.ApplyShading(shapePos - lightSource, ShapesColors[i], Color.LightGoldenrodYellow);
+                Color color = shape.ApplyShading(shapePos - lightSource, shape.Color, Color.LightGoldenrodYellow);
 
-                shape.Draw(ref _screenBuffer, color, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance);
+                shape.Draw(ref _screenBuffer, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance, color);
             }
 
             /* Draw Particles */
@@ -557,7 +513,7 @@ namespace Triangle
                 Vector3 shapePos = shape.Position;
                 int distance = (int)Vector3.Distance(shapePos, _player.EyePos);
 
-                shape.Draw(ref _screenBuffer, Particle.Color, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance);
+                shape.Draw(ref _screenBuffer, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance, Particle.Color);
             }
 
             /* FPS Counter */
@@ -572,17 +528,17 @@ namespace Triangle
             //Point shake = new Point(rnd.Next(-_screenShake, _screenShake), rnd.Next(-_screenShake, _screenShake));
             Point shake = Point.Zero;
 
+            // Prepare screen texture
             _screenBuffer.applyDepth(800);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
 
+            // Draw to screen
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, new Rectangle(shake, screenSize), Color.White);
             _spriteBatch.End();
 
-
-
+            // Cleanup after dawuing
             screenTextureBuffer.Dispose();
-
             _screenBuffer.Clear(Color.DarkSlateBlue);
 
             base.Draw(gameTime);

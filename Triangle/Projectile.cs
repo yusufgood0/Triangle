@@ -45,20 +45,19 @@ namespace Triangle
         int Projectile.HitDamage => (int)(Damage * damageMultiplier);
         Vector3 Projectile.Velocity => _velocity;
         Vector3 Projectile.Position => _position;
-        Color Projectile.Color => _colorState;
+        Color Projectile.Color => _model.Color;
         
-        const int Damage = 20;
+        const int Damage = 25;
         const int ModelDetail = 5;
-        const int Radius = 32;
+        const int Radius = 160;
         const int ExplosionSize = 100;
         const float HitboxSizeMultiplier = 1.5f;
         const int HitBoxSize = (int)(Radius*HitboxSizeMultiplier);
-        static Model _model = new Sphere(Vector3.Zero, Radius, ModelDetail);
+        static Model _model = new Sphere(Vector3.Zero, Radius, ModelDetail, Color.Red);
         static BoundingBox _hitBox = new BoundingBox(Vector3.Zero, Vector3.Zero);
         static Color[] _colors = new Color[] { Color.DarkRed, Color.Orange};
         Vector3 _velocity = DirVector * SpeedMultiplier;
         Vector3 _position = Position;
-        Color _colorState = Color.Red;
         public bool Move(SeedMapper seedMapper, int MapCellSize)
         {
             _velocity *= 1.05f;
@@ -77,9 +76,9 @@ namespace Triangle
         }
         public SquareParticle? GetParticles(Random rnd)
         {
-            _colorState = new Color(rnd.Next(100, 255), rnd.Next(0, 60), 0);
+            _model.Color = new Color(rnd.Next(100, 255), rnd.Next(0, 60), 0);
 
-            Color color = _colorState;
+            Color color = _model.Color;
             var particle = new SquareParticle(_position, color, _velocity);
             particle.Float(rnd.Next(5, 50));
             return particle;
@@ -90,7 +89,7 @@ namespace Triangle
             for (int i = 0; i < returnValue.Count(); i++)
             {
                 Vector3 particlePos = _position + new Vector3(rnd.Next(-ExplosionSize, ExplosionSize), rnd.Next(-ExplosionSize, ExplosionSize), rnd.Next(-ExplosionSize, ExplosionSize));
-                returnValue[i] = new SquareParticle(particlePos, _colorState, (particlePos - _position) / 10);
+                returnValue[i] = new SquareParticle(particlePos, _model.Color, (particlePos - _position) / 10);
                 returnValue[i].Float(200);
             }
             return returnValue;

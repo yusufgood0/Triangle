@@ -27,49 +27,51 @@ namespace Triangle.Enemies
             }
             return true;
         }
-        public Square[] GetHealthBar(Player player)
+        public Shape[] GetHealthBar(Player player)
         {
             Vector3 BarPosition = this.Position;
             BarPosition.Y -= (this.Height + 20);
             Vector3 dir = player.Position - this.Position;
+            dir.Normalize();
             Vector3 crossRight = Vector3.Cross(dir, Vector3.Up);
             Vector3 crossRightTimesSize = crossRight * HealthBarSize;
 
-            Vector3 BarBottomLeft = BarPosition - crossRight;
+            Vector3 BarBottomLeft = BarPosition - crossRightTimesSize;
             Vector3 BarTopLeft = BarBottomLeft;
             BarTopLeft.Y -= Enemy.HealthBarHeight;
 
-            Vector3 BarBottomRight = BarPosition + crossRight;
-            Vector3 BarTopRight = BarBottomLeft;
+            Vector3 BarBottomRight = BarPosition + crossRightTimesSize;
+            Vector3 BarTopRight = BarBottomRight;
             BarTopRight.Y -= Enemy.HealthBarHeight;
 
-            Square[] healthBar = new Square[2];
+            float healthPercentage = Math.Clamp((float)Health / (float)MaxHealth, 0, 1);
+            crossRightTimesSize = crossRight * HealthBarSize * healthPercentage * 2;
+
+            Vector3 GreenBarBottomRight = BarBottomLeft + crossRightTimesSize;
+            Vector3 GreenBarTopRight = GreenBarBottomRight;
+            GreenBarTopRight.Y -= Enemy.HealthBarHeight;
+
+            Shape[] healthBar = new Shape[2];
             healthBar[0] = new Square(
-                BarTopLeft,
+                GreenBarTopRight,
                 BarTopRight,
                 BarBottomRight,
-                BarBottomLeft,
-                Color.Black
+                GreenBarBottomRight,
+                Color.Red
                 );
 
-            float healthPercentage = Math.Clamp((float)Health / MaxHealth, 0, 1);
-            crossRightTimesSize *= healthPercentage;
-
-            Vector3 GreenBarBottomRight = BarPosition + crossRight;
-            Vector3 GreenBarTopRight = BarBottomLeft;
-            GreenBarTopRight.Y -= Enemy.HealthBarHeight;
-            healthBar[0] = new Square(
+            healthBar[1] = new Square(
                 BarTopLeft,
-                BarTopRight,
-                GreenBarBottomRight,
                 GreenBarTopRight,
+                GreenBarBottomRight,
+                BarBottomLeft,
                 Color.Green
                 );
 
             return healthBar;
         }
-        const int HealthBarSize = 100;
-        const int HealthBarHeight = 40;
+        const int HealthBarSize = 400;
+        const int HealthBarHeight = 100;
         public BoundingBox BoundingBox { get; }
         public BoundingBox Hitbox { get; }
         public Model[] models { get; }

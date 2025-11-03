@@ -12,25 +12,29 @@ namespace Triangle
 {
     internal struct SquareParticle
     {
-        static Random rnd = new Random();
-        public Square Square => _square;
         public DateTime CreationTime => _creationTime;
+        public Square Square => _square;
         public Color Color => _color;
-        DateTime _creationTime = DateTime.Now;
+
+        static Random rnd = new Random();
+
+        DateTime _creationTime;
         Vector3 _generalVelocity;
         Square _square;
         Color _color;
         public SquareParticle(Vector3 P, Color color, Vector3 Velocity)
         {
+            _square = new Square(P, P, P, P, Color);
             _color = color;
-            _square = new Square(P, P, P, P);
             _generalVelocity = Velocity;
+            _creationTime = DateTime.Now;
         }
         public SquareParticle(Vector3 P1, Vector3 P2, Vector3 P3, Vector3 P4, Color color, Vector3 Velocity)
         {
+            _square = new Square(P1, P2, P3, P4, Color);
             _color = color;
-            _square = new Square(P1, P2, P3, P4);
             _generalVelocity = Velocity;
+            _creationTime = DateTime.Now;
         }
         public void Float(int drift)
         {

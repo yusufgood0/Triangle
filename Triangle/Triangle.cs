@@ -13,18 +13,24 @@ namespace Triangle
 {
     internal struct Triangle : Shape
     {
-        Vector3 Shape.Position => P1;
+        public Color Color { get; set; }
         public Vector3 P1 { get; set; }
         public Vector3 P2 { get; set; }
         public Vector3 P3 { get; set; }
         public Vector3 Average => (P1 + P2 + P3) / 3;
-        public Triangle(Vector3 p1, Vector3 p2, Vector3 p3)
+        Vector3 Shape.Position => P1; 
+        Color Shape.Color
+        {
+            get => this.Color;
+            set => this.Color = value;
+        }
+        public Triangle(Vector3 p1, Vector3 p2, Vector3 p3, Color color)
         {
             this.P1 = p1;
             this.P2 = p2;
             this.P3 = p3;
+            this.Color = color;
         }
-
         static Color _transparentColor = new Color(0, 0, 0, 255);
         static readonly Point _errorPoint = new Point(-1, -1);
         static float _fov_scale;
@@ -49,11 +55,11 @@ namespace Triangle
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
-            Color color,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
-            int distance
+            int distance,
+            Color color
             )
         {
             if (
@@ -126,11 +132,11 @@ namespace Triangle
             return crossProduct <= 0;
         }
         public static bool WorldPosToScreenPos(
-                Vector3 cameraPosition,
-                float pitch,
-                float yaw,
-                Vector3 objectPosition,
-                out Point screenPos
+            Vector3 cameraPosition,
+            float pitch,
+            float yaw,
+            Vector3 objectPosition,
+            out Point screenPos
             )
         {
             Vector3 relativePos = objectPosition - cameraPosition;
@@ -180,7 +186,7 @@ namespace Triangle
             // mix colors based on the difference in rays
             return Color.Lerp(triangleColor, lightColor, dotProduct / 2);
         }
-        public unsafe static Shape[] ModelConstructor((int, int, int)[] Triangles, Vector3[] Vertices)
+        public unsafe static Shape[] ModelConstructor((int, int, int)[] Triangles, Vector3[] Vertices, Color color)
         {
             Shape[] ProcessedTriangles = new Shape[Triangles.Length];
             fixed (Shape* processedTrianglesPtr = ProcessedTriangles)
@@ -193,7 +199,8 @@ namespace Triangle
                     processedTrianglesPtr[i] = new Triangle(
                         verticesPtr[trianglesPtr[i].Item1],
                         verticesPtr[trianglesPtr[i].Item2],
-                        verticesPtr[trianglesPtr[i].Item3]
+                        verticesPtr[trianglesPtr[i].Item3],
+                        color
                     );
                 }
             }

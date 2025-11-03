@@ -14,7 +14,8 @@ namespace Triangle
     {
         BoundingBox Model.BoundingBox => new(Center - new Vector3(Radius), Center + new Vector3(Radius));
         Shape[] Model.Shapes => GetTriangles;
-
+        Color Model.Color { get => Color; set => Color = value; }
+        public Color Color { get; set; }
         List<(int, int, int)> Triangles;
         List<Vector3> Vertices;
         public Vector3 Center { get; private set; }
@@ -25,6 +26,7 @@ namespace Triangle
             this.Vertices = new(Sphere.Vertices);
             this.Center = Sphere.Center;
             this.Radius = Sphere.Radius;
+            this.Color = Sphere.Color;
         }
         public Model Move(Vector3 offset)
         {
@@ -36,8 +38,10 @@ namespace Triangle
             }
             return sphere;
         }
-        public Sphere(Vector3 center, float radius, int quality)
+        public Sphere(Vector3 center, float radius, int quality, Color color)
         {
+            this.Color = color;
+
             this.Radius = radius;
             this.Center = center;
             float pitch = MathF.PI / 2;
@@ -121,7 +125,7 @@ namespace Triangle
         }
         public Shape[] GetTriangles
         {
-            get => Triangle.ModelConstructor(Triangles.ToArray(), Vertices.ToArray());
+            get => Triangle.ModelConstructor(Triangles.ToArray(), Vertices.ToArray(), Color);
         }
         public void drawVerticies(
             SpriteBatch spriteBatch,

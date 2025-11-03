@@ -94,7 +94,7 @@ namespace Triangle
                 );
             if (Spells.ContainsKey(spellIdentity))
             {
-                Spells[spellIdentity].CastSpell(projectiles, ref player, ref squareParticles, ref screenShake);
+                Spells[spellIdentity].CastSpell(projectiles, ref player, ref squareParticles);
             }
 
         }
@@ -105,7 +105,7 @@ namespace Triangle
         internal interface Spell
         {
             int SpellIdentity { get; }
-            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
+            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
             {
 
             }
@@ -114,9 +114,8 @@ namespace Triangle
         {
             int Spell.SpellIdentity => SpellIdentity;
             public static int SpellIdentity = ConvertSpellIndex(Element.Fire, Element.Fire, Element.Fire);
-            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
+            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
             {
-                screenShake += 15;
                 Debug.Write("Casting FireBall");
                 float speed = MathF.Pow(player.Speed.X * player.Speed.X + player.Speed.Y * player.Speed.Y * player.Speed.Z * player.Speed.Z, 0.4f);
                 projectiles.Add(
@@ -128,7 +127,7 @@ namespace Triangle
         {
             int Spell.SpellIdentity => SpellIdentity;
             public static int SpellIdentity = ConvertSpellIndex(Element.Air, Element.Air, Element.Air);
-            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles, ref int screenShake)
+            public void CastSpell(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
             {
                 Debug.Write("Casting Dash");
                 player.Dash();

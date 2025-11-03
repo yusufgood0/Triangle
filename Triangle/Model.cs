@@ -14,6 +14,7 @@ namespace Triangle
     {
         Shape[] Shapes { get; }
         BoundingBox BoundingBox { get; }
+        Color Color { get; set; }
         public Model Move(Vector3 offset)
         {
             return null;

@@ -13,13 +13,14 @@ namespace Triangle
     internal interface Shape
     {
         Vector3 Position { get; }
+        Color Color { get; set; }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
-            Color color,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
-            int distance
+            int distance,
+            Color color
             )
         {
             Debug.WriteLine("this is interface Code, It Should not run");

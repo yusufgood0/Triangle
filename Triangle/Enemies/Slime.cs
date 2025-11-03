@@ -97,8 +97,8 @@ namespace Triangle.Enemies
         private const int Size = 250;
         private const int Damage = 20;
         private const int MaxHealth = 125;
-        private const int minHeal = 15;
-        private const int maxHeal = 20;
+        private const int minHeal = 1;
+        private const int maxHeal = 5;
         private const float JumpCooldown = 2;
         private const float SquishFactorUp = 200;
         private const float SquishFactorDown = -100;

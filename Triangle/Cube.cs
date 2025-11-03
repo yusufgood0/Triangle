@@ -7,6 +7,7 @@ namespace Triangle
     {
         BoundingBox Model.BoundingBox => new(Position, BRB);
         Shape[] Model.Shapes => CreateSquares();
+        Color Model.Color { get => Color; set => Color = value; }
         static (int, int, int)[] Triangles = new (int, int, int)[]
             {
                 (0, 1, 2), (1, 3, 2), // Front
@@ -55,10 +56,11 @@ namespace Triangle
         public Shape[] GetTriangles
         {
             get => Triangle.ModelConstructor(Triangles, new Vector3[]
-            {
-                TLF, TRF, BLF, BRF,
-                TLB, TRB, BLB, BRB
-            });
+                {
+                    TLF, TRF, BLF, BRF,
+                    TLB, TRB, BLB, BRB
+                },
+                Color);
         }
         public Vector3 Center
         {
@@ -97,11 +99,11 @@ namespace Triangle
                 // Draw each triangle in the square
                 square.Draw(
                     ref screenBuffer,
-                    color,
                     cameraPosition,
                     pitch,
                     yaw,
-                    distance
+                    distance,
+                    Color
                 );
             }
         }

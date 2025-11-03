@@ -12,17 +12,23 @@ namespace Triangle
     internal struct Square : Shape
     {
 
-        public Vector3[] Vertices;
-        public Vector3 AveragePos;
+        public readonly Vector3[] Vertices;
+        public readonly Vector3 AveragePos;
         public Color Color;
-        public Shape[] Triangles { get => Triangle.ModelConstructor(triangles, Vertices); }
-        Vector3 Shape.Position => AveragePos;
 
-        public static (int, int, int)[] triangles = new (int, int, int)[]
+        static readonly (int, int, int)[] triangleIndexes = new (int, int, int)[]
                 {
                     (1, 2, 3),
                     (1, 3, 4)
                 };
+        public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, Vertices, Color); }
+        Vector3 Shape.Position => AveragePos;
+        Color Shape.Color 
+        { 
+            get => this.Color; 
+            set => this.Color = value; 
+        }
+
         static Point _screenCenter;
         static Point _CachedscreenSize;
         static float _fov_scale;
@@ -67,11 +73,11 @@ namespace Triangle
         }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
-            Color color,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
-            int distance
+            int distance,
+            Color color
             )
         {
             if (
@@ -84,6 +90,7 @@ namespace Triangle
             //if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles
 
             /* calculates a bounding rectangle for the triangle */
+
             int xmin = Math.Max(General.min4(p1.X, p2.X, p3.X, p4.X), 0);
             int ymin = Math.Max(General.min4(p1.Y, p2.Y, p3.Y, p4.Y), 0);
             int xmax = Math.Min(General.max4(p1.X, p2.X, p3.X, p4.X), _CachedscreenSize.X);
@@ -113,11 +120,11 @@ namespace Triangle
                 }
         }
         public static bool WorldPosToScreenPos(
-                Vector3 cameraPosition,
-                float pitch,
-                float yaw,
-                Vector3 objectPosition,
-                out Point screenPos
+            Vector3 cameraPosition,
+            float pitch,
+            float yaw,
+            Vector3 objectPosition,
+            out Point screenPos
             )
         {
             Vector3 relativePos = objectPosition - cameraPosition;
