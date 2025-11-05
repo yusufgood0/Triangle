@@ -1,13 +1,14 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
+using SlimeGame.Models.Shapes;
 
-namespace Triangle
+namespace SlimeGame.Models
 {
-    internal struct Cube : Model
+    internal struct Cube : GenericModel
     {
-        BoundingBox Model.BoundingBox => new(Position, BRB);
-        Shape[] Model.Shapes => CreateSquares();
-        Color Model.Color { get => Color; set => Color = value; }
+        BoundingBox GenericModel.BoundingBox => new(Position, BRB);
+        Shape[] GenericModel.Shapes => CreateSquares();
+        Color GenericModel.Color { get => Color; set => Color = value; }
         static (int, int, int)[] Triangles = new (int, int, int)[]
             {
                 (0, 1, 2), (1, 3, 2), // Front
@@ -51,7 +52,7 @@ namespace Triangle
             this.xSize = xSize;
             this.ySize = ySize;
             this.zSize = zSize;
-            this.Color = color;
+            Color = color;
         }
         public Shape[] GetTriangles
         {
@@ -78,7 +79,7 @@ namespace Triangle
             zSize = Cube.zSize;
             Color = Cube.Color;
         }
-        public Model Move(Vector3 offset)
+        public GenericModel Move(Vector3 offset)
         {
             Cube cube = new(this);
             cube.TLF += offset; // other 7 points are dependant on the top-left-frontmost point

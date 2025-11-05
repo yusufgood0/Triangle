@@ -2,34 +2,38 @@
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using random_generation_in_a_pixel_grid;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Triangle.Enemies;
+using SlimeGame.Enemies;
+using SlimeGame.Generation;
+using SlimeGame.Menus;
+using SlimeGame.Models;
+using SlimeGame.Models.Shapes;
 using static System.Collections.Specialized.BitVector32;
-namespace Triangle
+namespace SlimeGame
 {
     public class Game1 : Game
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
+        private SpriteFont _spriteFont;
         private Player _player;
         private bool _previousIsMouseVisible = false;
         private Point screenSize;
         private int pixelSize = 4;
         private float FOV = MathHelper.Pi / 1.5f;
         private bool FillScreen = false;
-        Rectangle drawParemeters;
+        private Rectangle drawParemeters;
         private float _sensitivity = 0.01f;
         private KeyboardState _keyboardState;
         private KeyboardState _previousKeyboardState;
         private MouseState _mouseState;
         private MouseState _previousMouseState;
-        private List<Model> Models = new List<Model>();
+        private List<GenericModel> _models = new List<GenericModel>();
         private TextureBuffer _screenBuffer;
         private Texture2D screenTextureBuffer;
         private FramesPerSecondTimer framesPerSecondTimer = new();
@@ -45,14 +49,15 @@ namespace Triangle
         private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
         private List<Enemy> Enemies = new();
         private List<Action> KeyBinds = new();
+        private PauseMenu _pauseMenu;
 
-        //private Texture2D blankTexture; //for testing purposes
+        private Texture2D blankTexture; //for testing purposes
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.IsFullScreen = true;
+            _graphics.IsFullScreen = false;
             Content.RootDirectory = "Content";
-            IsMouseVisible = false;
+            IsMouseVisible = true;
         }
 
         protected override void Initialize()
@@ -65,20 +70,7 @@ namespace Triangle
             _graphics.PreferredBackBufferHeight = screenSize.Y;
             _graphics.ApplyChanges();
 
-            if (FillScreen)
-            {
-                drawParemeters = new Rectangle(0, 0, screenSize.X, screenSize.Y);
-            }
-            else
-            {
-                int paddingx = Math.Max((screenSize.X - screenSize.Y) / 2, 0);
-                int paddingy = Math.Max((screenSize.Y - screenSize.X) / 2, 0);
-                int screenWidthHeight = Math.Min(screenSize.Y, screenSize.X);
-
-                drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
-            }
-
-            /* Initilizes blank texture as a 1x1 white pixel texture 
+            /* Initilizes blank texture as a 1x1 white pixel texture */
             blankTexture = new Texture2D(GraphicsDevice, 1, 1);
             blankTexture.SetData(new Color[] { Color.White });
             // */
@@ -106,7 +98,7 @@ namespace Triangle
                 {
                     for (int z = 0; z < 5; z++)
                     {
-                        Models.Add(new Cube(new Vector3(size * x * 2, size * y * -2, size * z * 2), size, size, size));
+                        _models.Add(new Cube(new Vector3(size * x * 2, size * y * -2, size * z * 2), size, size, size));
                     }
                 }
             }
@@ -123,12 +115,25 @@ namespace Triangle
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             _screenBuffer = new TextureBuffer(screenSize.X / pixelSize, screenSize.Y / pixelSize, Color.Transparent);
+            _spriteFont = Content.Load<SpriteFont>("GameFont");
             Triangle.Initialize(_spriteBatch, _screenBuffer);
             Square.Initialize(_spriteBatch, _screenBuffer);
             Mesh.Initialize(_spriteBatch, _screenBuffer);
             Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
             lightSource = new(MapCenter.X, -1000, MapCenter.Y);
+            if (FillScreen)
+            {
+                drawParemeters = new Rectangle(0, 0, screenSize.X, screenSize.Y);
+            }
+            else
+            {
+                int paddingx = Math.Max((screenSize.X - screenSize.Y) / 2, 0);
+                int paddingy = Math.Max((screenSize.Y - screenSize.X) / 2, 0);
+                int screenWidthHeight = Math.Min(screenSize.Y, screenSize.X);
 
+                drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
+            }
+            _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, drawParemeters);
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
 
@@ -192,7 +197,7 @@ namespace Triangle
 
 
             Square.UpdateConstants(FOV);
-            Triangle.UpdateConstants(FOV);
+            SlimeGame.Models.Shapes.Triangle.UpdateConstants(FOV);
             Mesh.UpdateConstants(FOV);
         }
         protected override void Update(GameTime gameTime)
@@ -448,11 +453,11 @@ namespace Triangle
                 Color.LightGoldenrodYellow
                 );
 
-            List<Model> allModels = new List<Model>(Models);
+            List<GenericModel> allModels = new List<GenericModel>(_models);
 
             for (int i = 0; i < _projectiles.Count; i++)
             {
-                Model model = _projectiles[i].Model;
+                GenericModel model = _projectiles[i].Model;
                 allModels.Add(model);
             }
 
@@ -466,7 +471,7 @@ namespace Triangle
                 visibleShapes.AddRange(enemy.GetHealthBar(_player));
             }
 
-            foreach (Model model in allModels)
+            foreach (GenericModel model in allModels)
             {
                 BoundingBox boundingBox = model.BoundingBox;
                 bool inView = ContainmentType.Disjoint != viewFrustrum.Contains(boundingBox);
@@ -519,9 +524,6 @@ namespace Triangle
                 Debug.WriteLine("FPS: " + framesPerSecondTimer.FPS);
             }
 
-            
-
-
             GraphicsDevice.Clear(Color.Black);
 
             // Prepare screen texture
@@ -532,6 +534,7 @@ namespace Triangle
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, drawParemeters, Color.White);
             _spriteBatch.End();
+            _pauseMenu.Menu.Draw(_spriteBatch, blankTexture, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
 
             // Cleanup after drawing
             screenTextureBuffer.Dispose();

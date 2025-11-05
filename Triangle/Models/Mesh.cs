@@ -1,41 +1,27 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
-namespace Triangle
+
+namespace SlimeGame.Models
 {
-    internal struct Square : Shape
+    internal struct Mesh(int[][] Indices, Vector3[] Vertices)
     {
-
-        public readonly Vector3[] Vertices;
-        public readonly Vector3 AveragePos;
-        public Color Color;
-
-        static readonly (int, int, int)[] triangleIndexes = new (int, int, int)[]
-                {
-                    (1, 2, 3),
-                    (1, 3, 4)
-                };
-        public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, Vertices, Color); }
-        Vector3 Shape.Position => AveragePos;
-        Color Shape.Color 
-        { 
-            get => this.Color; 
-            set => this.Color = value; 
-        }
-
         static Point _screenCenter;
         static Point _CachedscreenSize;
         static float _fov_scale;
         static float ScaleX;
         static float ScaleY;
+        static Point _errorPoint = Point.Zero;
         public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
         {
+
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
             _CachedscreenSize = new Point(screenBuffer.width, screenBuffer.height);
         }
@@ -45,52 +31,72 @@ namespace Triangle
             ScaleX = _fov_scale * _screenCenter.X;
             ScaleY = _fov_scale * _screenCenter.Y;
         }
-        public Vector3 Normal()
-        {
-            Vector3 side1 = Vertices[0] - Vertices[1];
-            Vector3 side2 = Vertices[0] - Vertices[3];
-            Vector3 normalDir = Vector3.Cross(side1, side2);
-            normalDir.Normalize();
-            return normalDir;
-        }
-        public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
-        {
-            lightDirection.Normalize();
-
-            Vector3 normalDir = Normal();
-
-            // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
-            float dotProduct = Vector3.Dot(-normalDir, lightDirection);
-
-            // mix colors based on the difference in rays
-            return Color.Lerp(triangleColor, lightColor, dotProduct / 2);
-        }
-        public Square(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4, Color color = new())
-        {
-            Vertices = new Vector3[] { p1, p2, p3, p4 };
-            AveragePos = (p1 + p2 + p3 + p4) / 4;
-            Color = color;
-        }
         public unsafe void Draw(
             ref TextureBuffer screenBuffer,
+            Color[] colors,
+            Vector3 cameraPosition,
+            float pitch,
+            float yaw,
+            Vector3 lightPos,
+            Color lightColor
+            )
+        {
+            Point[] Points = new Point[Vertices.Length];
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[i], out var Point);
+                Points[i] = Point;
+            }
+            for (int i = 0; i < Indices.Length; i++)
+            {
+                var indexes = Indices[i];
+                if (Points[indexes[0]] == _errorPoint)
+                    continue;
+                if (Points[indexes[1]] == _errorPoint)
+                    continue;
+                if (Points[indexes[2]] == _errorPoint)
+                    continue;
+                if (Points[indexes[3]] == _errorPoint)
+                    continue;
+
+                Vector3 lightDirection = Vertices[indexes[0]] - lightPos;
+                lightDirection.Normalize();
+
+                Vector3 side1 = Vertices[indexes[0]] - Vertices[indexes[1]];
+                Vector3 side2 = Vertices[indexes[0]] - Vertices[indexes[2]];
+                Vector3 normalDir = Vector3.Cross(side1, side2);
+                normalDir.Normalize();
+
+                // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
+                float dotProduct = Vector3.Dot(-normalDir, lightDirection);
+
+                // mix colors based on the difference in rays
+                Color color = Color.Lerp(colors[i], lightColor, dotProduct/3);
+
+                int distance = (int)Vector3.Distance(cameraPosition, Vertices[indexes[0]]);
+                DrawSquare(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);
+                continue;
+            }
+
+        }
+        public unsafe void DrawSquare(
+            ref TextureBuffer screenBuffer,
+            Color color,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
             int distance,
-            Color color
+            int[] indexes,
+            Point[] Points
             )
         {
-            if (
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[0], out Point p1) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[1], out Point p2) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[2], out Point p3) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.Vertices[3], out Point p4)
-            ) { return; }
+            Point p1 = Points[indexes[0]];
+            Point p2 = Points[indexes[1]];
+            Point p3 = Points[indexes[2]];
+            Point p4 = Points[indexes[3]];
 
-            //if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles
 
             /* calculates a bounding rectangle for the triangle */
-
             int xmin = Math.Max(General.min4(p1.X, p2.X, p3.X, p4.X), 0);
             int ymin = Math.Max(General.min4(p1.Y, p2.Y, p3.Y, p4.Y), 0);
             int xmax = Math.Min(General.max4(p1.X, p2.X, p3.X, p4.X), _CachedscreenSize.X);
@@ -120,21 +126,21 @@ namespace Triangle
                 }
         }
         public static bool WorldPosToScreenPos(
-            Vector3 cameraPosition,
-            float pitch,
-            float yaw,
-            Vector3 objectPosition,
-            out Point screenPos
+                Vector3 cameraPosition,
+                float pitch,
+                float yaw,
+                Vector3 objectPosition,
+                out Point screenPos
             )
         {
             Vector3 relativePos = objectPosition - cameraPosition;
             Vector3 rotatedrelativePos = General.RotateVector(relativePos, yaw, pitch);
 
-            if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return as failed
+            if (rotatedrelativePos.Z < 0) { screenPos = _errorPoint; return false; } // Object is behind the camera, return as failed
 
             screenPos = new Point(
-                (int)((rotatedrelativePos.X / rotatedrelativePos.Z) * ScaleX + _screenCenter.X),
-                (int)((rotatedrelativePos.Y / rotatedrelativePos.Z) * ScaleY + _screenCenter.Y)
+                (int)(rotatedrelativePos.X / rotatedrelativePos.Z * ScaleX + _screenCenter.X),
+                (int)(rotatedrelativePos.Y / rotatedrelativePos.Z * ScaleY + _screenCenter.Y)
             );
 
             return true;
@@ -164,22 +170,6 @@ namespace Triangle
             if (c4 > 0) hasPos = true; else if (c4 < 0) hasNeg = true;
 
             return !(hasPos && hasNeg);
-        }
-        public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
-        {
-            // Yaw rotation (around Y axis) // first for fps feel
-            float cosYaw = MathF.Cos(yaw);
-            float sinYaw = MathF.Sin(yaw);
-            float x1 = vector.X * cosYaw - vector.Z * sinYaw;
-            float z1 = vector.X * sinYaw + vector.Z * cosYaw;
-
-            // Pitch rotation (around X axis)
-            float cosPitch = MathF.Cos(pitch);
-            float sinPitch = MathF.Sin(pitch);
-            float y1 = vector.Y * cosPitch - z1 * sinPitch;
-            float z2 = vector.Y * sinPitch + z1 * cosPitch;
-
-            return new Vector3(x1, y1, z2);
         }
     }
 }

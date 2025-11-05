@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using static System.Net.Mime.MediaTypeNames;
 
-namespace Triangle
+namespace SlimeGame.Menus
 {
     internal struct MenuButton
     {
@@ -18,9 +19,9 @@ namespace Triangle
         public bool IsHovered(Vector2 point) => ButtonRect.Contains(point);
         public bool IsHovered(Point point) => ButtonRect.Contains(point);
         public bool IsHovered(MouseState mouseState) => ButtonRect.Contains(new Point(mouseState.X, mouseState.Y));
-        public bool IsClicked(MouseState previousMouse, MouseState currentMouse)
+        public bool IsClicked(Vector2 mousePos, MouseState previousMouse, MouseState currentMouse)
         {
-            return ButtonRect.Contains(new Vector2(currentMouse.X, currentMouse.Y)) &&
+            return ButtonRect.Contains(mousePos) &&
                    previousMouse.LeftButton == ButtonState.Released &&
                    currentMouse.LeftButton == ButtonState.Pressed;
         }
@@ -31,17 +32,17 @@ namespace Triangle
             TextRect = textRect;
             BehaviorValue = behaviorValue;
         }
-        public MenuButton(string text, Rectangle buttonRect, SpriteFont spriteFont, int behaviorValue)
+        public MenuButton(Rectangle buttonRect, SpriteFont spriteFont, int behaviorValue, string text)
         {
             Text = text;
             ButtonRect = buttonRect;
 
             Vector2 stringSize = spriteFont.MeasureString(text);
             TextRect = new Rectangle(
-                (int)(buttonRect.Width - stringSize.X / 2),
-                (int)(buttonRect.Height - stringSize.Y / 2),
-                (int)(stringSize.X),
-                (int)(stringSize.Y)
+                (int)(buttonRect.X + buttonRect.Width/2 - stringSize.X / 2),
+                (int)(buttonRect.Y + buttonRect.Height/2 - stringSize.Y / 2),
+                (int)stringSize.X,
+                (int)stringSize.Y
                 );
 
             BehaviorValue = behaviorValue;
@@ -49,11 +50,6 @@ namespace Triangle
 
         public void Draw(SpriteBatch spriteBatch, RenderTarget2D renderTarget2D, Texture2D rectTexture, SpriteFont font, Color buttonColor, Color textColor, Point mousePos)
         {
-            spriteBatch.GraphicsDevice.SetRenderTarget(renderTarget2D);
-
-            // Draw button background 
-            spriteBatch.Draw(rectTexture, ButtonRect, buttonColor);
-
             if (IsHovered(mousePos))
             {
                 buttonColor = Color.Lerp(buttonColor, Color.White, 0.3f);
@@ -64,9 +60,13 @@ namespace Triangle
             Vector2 textPosition = new Vector2(
                 TextRect.X + (TextRect.Width - textSize.X) / 2,
                 TextRect.Y + (TextRect.Height - textSize.Y) / 2);
-            spriteBatch.DrawString(font, Text, textPosition, textColor);
 
-            spriteBatch.GraphicsDevice.SetRenderTarget(null);
+            // Draw button background 
+            spriteBatch.Begin();
+            spriteBatch.Draw(rectTexture, ButtonRect, buttonColor);
+            spriteBatch.DrawString(font, Text, textPosition, textColor);
+            spriteBatch.End();
+
 
         }
     }

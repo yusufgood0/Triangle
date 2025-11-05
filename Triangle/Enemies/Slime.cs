@@ -1,13 +1,14 @@
 ﻿using Microsoft.Xna.Framework;
-using random_generation_in_a_pixel_grid;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SlimeGame.Generation;
+using SlimeGame.Models;
 
-namespace Triangle.Enemies
+namespace SlimeGame.Enemies
 {
     internal class Slime : Enemy
     {
@@ -82,7 +83,7 @@ namespace Triangle.Enemies
         }
         BoundingBox Enemy.BoundingBox { get => _hitbox; }
         BoundingBox Enemy.Hitbox { get => _hitbox; }
-        Model[] Enemy.models { get => _model; }
+        GenericModel[] Enemy.models { get => _model; }
         Vector3 Enemy.Position { get => _position; }
         int Enemy.Health { get => _health; }
         int Enemy.MaxHealth { get => MaxHealth; }
@@ -108,7 +109,7 @@ namespace Triangle.Enemies
         private Vector3 _position;
         private Vector3 _speed;
         private bool onGround = false;
-        private Model[] _model = new Model[1];
+        private GenericModel[] _model = new GenericModel[1];
         private float _squish = SquishFactorNormal;
         private double TimeSinceLastJump => (DateTime.Now - JumpTimer).TotalSeconds;
         private int _health;

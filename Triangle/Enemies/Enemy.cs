@@ -1,12 +1,14 @@
 ﻿using Microsoft.Xna.Framework;
-using random_generation_in_a_pixel_grid;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SlimeGame.Generation;
+using SlimeGame.Models;
+using SlimeGame.Models.Shapes;
 
-namespace Triangle.Enemies
+namespace SlimeGame.Enemies
 {
     internal interface Enemy
     {
@@ -74,7 +76,7 @@ namespace Triangle.Enemies
         const int HealthBarHeight = 100;
         public BoundingBox BoundingBox { get; }
         public BoundingBox Hitbox { get; }
-        public Model[] models { get; }
+        public GenericModel[] models { get; }
         public Vector3 Position { get; }
         public int Health { get; }
         public int MaxHealth { get; }

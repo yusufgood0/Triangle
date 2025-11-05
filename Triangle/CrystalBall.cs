@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-namespace Triangle
+using SlimeGame.Models;
+using SlimeGame.Models.Shapes;
+namespace SlimeGame
 {
     internal struct CrystalBall(Vector3 orbOffset)
     {
@@ -18,7 +20,7 @@ namespace Triangle
         public float SwirlSpeed => _swirlSpeed;
         public int colorValue;
 
-        static Model _model = new Sphere(Vector3.Zero, 30, SphereQuality, Color.White);
+        static GenericModel _model = new Sphere(Vector3.Zero, 30, SphereQuality, Color.White);
         Vector3 _position;
         Vector3[] _highlights = new Vector3[3];
         int _swirlPos = 0;

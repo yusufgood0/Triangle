@@ -1,3 +1,3 @@
 ﻿
-using var game = new Triangle.Game1();
+using var game = new SlimeGame.Game1();
 game.Run();

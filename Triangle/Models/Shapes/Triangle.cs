@@ -9,7 +9,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
-namespace Triangle
+namespace SlimeGame.Models.Shapes
 {
     internal struct Triangle : Shape
     {
@@ -21,15 +21,15 @@ namespace Triangle
         Vector3 Shape.Position => P1; 
         Color Shape.Color
         {
-            get => this.Color;
-            set => this.Color = value;
+            get => Color;
+            set => Color = value;
         }
         public Triangle(Vector3 p1, Vector3 p2, Vector3 p3, Color color)
         {
-            this.P1 = p1;
-            this.P2 = p2;
-            this.P3 = p3;
-            this.Color = color;
+            P1 = p1;
+            P2 = p2;
+            P3 = p3;
+            Color = color;
         }
         static Color _transparentColor = new Color(0, 0, 0, 255);
         static readonly Point _errorPoint = new Point(-1, -1);
@@ -63,9 +63,9 @@ namespace Triangle
             )
         {
             if (
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P1, out Point p1) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P2, out Point p2) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, this.P3, out Point p3)
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, P1, out Point p1) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, P2, out Point p2) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, P3, out Point p3)
             ) { return; }
 
             if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles
@@ -126,7 +126,7 @@ namespace Triangle
             int edge2Y = c.Y - a.Y;
 
             // Compute the cross product (determines winding order)
-            int crossProduct = (edge1X * edge2Y) - (edge1Y * edge2X);
+            int crossProduct = edge1X * edge2Y - edge1Y * edge2X;
 
             // If cross product is negative, it's back-facing (assuming CCW winding)
             return crossProduct <= 0;

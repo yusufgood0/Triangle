@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace random_generation_in_a_pixel_grid
+namespace SlimeGame.Generation
 {
     internal class SeedMapper
     {
@@ -25,13 +25,13 @@ namespace random_generation_in_a_pixel_grid
             Random pureRandom;
             if (seed != null)
             {
-                this.random = new WeightedRandom(weights, seed);
+                random = new WeightedRandom(weights, seed);
                 pureRandom = new Random((int)seed);
 
             }
             else
             {
-                this.random = new WeightedRandom(weights);
+                random = new WeightedRandom(weights);
                 pureRandom = new Random();
             }
             Values = new int[width, height];

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace random_generation_in_a_pixel_grid
+namespace SlimeGame.Generation
 {
     internal class WeightedRandom
     {

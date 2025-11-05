@@ -7,14 +7,15 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.Models.Shapes;
 
-namespace Triangle
+namespace SlimeGame.Models
 {
-    internal struct Sphere : Model
+    internal struct Sphere : GenericModel
     {
-        BoundingBox Model.BoundingBox => new(Center - new Vector3(Radius), Center + new Vector3(Radius));
-        Shape[] Model.Shapes => GetTriangles;
-        Color Model.Color { get => Color; set => Color = value; }
+        BoundingBox GenericModel.BoundingBox => new(Center - new Vector3(Radius), Center + new Vector3(Radius));
+        Shape[] GenericModel.Shapes => GetTriangles;
+        Color GenericModel.Color { get => Color; set => Color = value; }
         public Color Color { get; set; }
         List<(int, int, int)> Triangles;
         List<Vector3> Vertices;
@@ -22,13 +23,13 @@ namespace Triangle
         public float Radius { get; private set; }
         public Sphere(Sphere Sphere)
         {
-            this.Triangles = new(Sphere.Triangles);
-            this.Vertices = new(Sphere.Vertices);
-            this.Center = Sphere.Center;
-            this.Radius = Sphere.Radius;
-            this.Color = Sphere.Color;
+            Triangles = new(Sphere.Triangles);
+            Vertices = new(Sphere.Vertices);
+            Center = Sphere.Center;
+            Radius = Sphere.Radius;
+            Color = Sphere.Color;
         }
-        public Model Move(Vector3 offset)
+        public GenericModel Move(Vector3 offset)
         {
             Sphere sphere = new(this);
             sphere.Center += offset;
@@ -40,10 +41,10 @@ namespace Triangle
         }
         public Sphere(Vector3 center, float radius, int quality, Color color)
         {
-            this.Color = color;
+            Color = color;
 
-            this.Radius = radius;
-            this.Center = center;
+            Radius = radius;
+            Center = center;
             float pitch = MathF.PI / 2;
             float yaw = 0;
 

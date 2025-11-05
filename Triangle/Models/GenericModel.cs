@@ -7,15 +7,16 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.Models.Shapes;
 
-namespace Triangle
+namespace SlimeGame.Models
 {
-    internal interface Model
+    internal interface GenericModel
     {
         Shape[] Shapes { get; }
         BoundingBox BoundingBox { get; }
         Color Color { get; set; }
-        public Model Move(Vector3 offset)
+        public GenericModel Move(Vector3 offset)
         {
             return null;
         }

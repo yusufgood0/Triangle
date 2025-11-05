@@ -4,16 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using random_generation_in_a_pixel_grid;
+using SlimeGame.Generation;
+using SlimeGame.Models;
+using SlimeGame.Models.Shapes;
 
-namespace Triangle
+namespace SlimeGame
 {
     internal interface Projectile
     {
         public TargetType TargetType { get; }
-        public Model Model { get; }
+        public GenericModel Model { get; }
         public BoundingBox HitBox { get; }
         public int HitDamage { get; }
         public Vector3 Velocity { get; }
@@ -40,7 +41,7 @@ namespace Triangle
     internal class FireBallProjectile(Vector3 Position, Vector3 DirVector, float SpeedMultiplier, float damageMultiplier) : Projectile
     {
         TargetType Projectile.TargetType => TargetType.Enemy;
-        Model Projectile.Model => _model.Move(_position);
+        GenericModel Projectile.Model => _model.Move(_position);
         BoundingBox Projectile.HitBox => _hitBox;
         int Projectile.HitDamage => (int)(Damage * damageMultiplier);
         Vector3 Projectile.Velocity => _velocity;
@@ -53,7 +54,7 @@ namespace Triangle
         const int ExplosionSize = 100;
         const float HitboxSizeMultiplier = 1.5f;
         const int HitBoxSize = (int)(Radius*HitboxSizeMultiplier);
-        static Model _model = new Sphere(Vector3.Zero, Radius, ModelDetail, Color.Red);
+        static GenericModel _model = new Sphere(Vector3.Zero, Radius, ModelDetail, Color.Red);
         static BoundingBox _hitBox = new BoundingBox(Vector3.Zero, Vector3.Zero);
         static Color[] _colors = new Color[] { Color.DarkRed, Color.Orange};
         Vector3 _velocity = DirVector * SpeedMultiplier;
