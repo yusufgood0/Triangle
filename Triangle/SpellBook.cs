@@ -50,7 +50,7 @@ namespace SlimeGame
         };
         const int _maxElements = 3;
         static Random rnd = new Random();
-        public Color GetElementColor(Element element)
+        static public Color GetElementColor(Element element)
         {
             return element switch
             {

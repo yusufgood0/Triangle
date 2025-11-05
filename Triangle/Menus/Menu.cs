@@ -33,10 +33,10 @@ namespace SlimeGame.Menus
         public void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Rectangle drawRect, MouseState mouseState, Color buttonColor, Color textColor)
         {
             spriteBatch.GraphicsDevice.SetRenderTarget(_renderTarget);
-            _renderTarget.GraphicsDevice.Clear(Color.Cyan);
+            _renderTarget.GraphicsDevice.Clear(Color.RoyalBlue);
             foreach (var button in _menuButtons)
             {
-                button.Draw(spriteBatch, _renderTarget, rectTexture, font, buttonColor, textColor, mouseState.Position);
+                button.Draw(spriteBatch, _renderTarget, rectTexture, font, textColor, GetVirtualPosition(mouseState).ToPoint());
             }
             spriteBatch.GraphicsDevice.SetRenderTarget(null);
 
@@ -61,6 +61,10 @@ namespace SlimeGame.Menus
             }
 
             return -1; // No button clicked
+        }
+        public void ChangeString(int index, string text)
+        {
+            _menuButtons[index].Text = text;
         }
     }
 }

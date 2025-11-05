@@ -48,8 +48,28 @@ namespace SlimeGame
         private Vector3 lightSource;
         private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
         private List<Enemy> Enemies = new();
-        private List<Action> KeyBinds = new();
+        private Action[] KeyBinds = new Action[5];
         private PauseMenu _pauseMenu;
+        private SettingsMenu _settingsMenu;
+        private gamestates _currentGameState = gamestates.Playing;
+        private bool Playing => _currentGameState == gamestates.Playing;
+        private bool Paused => _currentGameState == gamestates.Paused;
+        private bool SettingsMenu => _currentGameState == gamestates.SettingsMenu;
+
+        private enum gamestates
+        {
+            Playing,
+            Paused,
+            SettingsMenu
+        }
+        public enum Actions
+        {
+            AddFire = 0,
+            AddWater = 1,
+            AddAir = 2,
+            AddEarth = 3,
+            CastSpell = 4
+        }
 
         private Texture2D blankTexture; //for testing purposes
         public Game1()
@@ -76,11 +96,11 @@ namespace SlimeGame
             // */
 
             /* Initilize Keybinds with early values */
-            KeyBinds.Add(new Action(Keys.D1, ActionCatagory.AddElement, (int)Element.Fire));
-            KeyBinds.Add(new Action(Keys.D2, ActionCatagory.AddElement, (int)Element.Water));
-            KeyBinds.Add(new Action(Keys.D3, ActionCatagory.AddElement, (int)Element.Air));
-            KeyBinds.Add(new Action(Keys.D4, ActionCatagory.AddElement, (int)Element.Earth));
-            KeyBinds.Add(new Action(Keys.Q, ActionCatagory.CastSpell, 0));
+            KeyBinds[(int)Actions.AddFire] = (new Action(Keys.D1, ActionCatagory.AddElement, (int)Element.Fire));
+            KeyBinds[(int)Actions.AddWater] = (new Action(Keys.D2, ActionCatagory.AddElement, (int)Element.Water));
+            KeyBinds[(int)Actions.AddAir] = (new Action(Keys.D3, ActionCatagory.AddElement, (int)Element.Air));
+            KeyBinds[(int)Actions.AddEarth] = (new Action(Keys.D4, ActionCatagory.AddElement, (int)Element.Earth));
+            KeyBinds[(int)Actions.CastSpell] = (new Action(Keys.Q, ActionCatagory.CastSpell, 0));
 
             /* randomly places many orbs around for testing 
             for (int i = 0; i < 1250; i++)
@@ -134,6 +154,7 @@ namespace SlimeGame
                 drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
             }
             _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, drawParemeters);
+            _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, drawParemeters);
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
 
@@ -202,167 +223,213 @@ namespace SlimeGame
         }
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape) && Keyboard.GetState().IsKeyDown(Keys.LeftAlt))
                 Exit();
 
             _keyboardState = Keyboard.GetState();
             _mouseState = Mouse.GetState();
 
-            IsMouseVisible = !IsActive;
+            IsMouseVisible = !Playing;
 
-            _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, screenSize, _sensitivity);
-            _player.Update(_keyboardState);
-            
-            foreach (Enemy enemy in Enemies)
+            if (Playing)
             {
-                foreach (Enemy enemy2 in Enemies)
+                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Escape))
                 {
-                    if (enemy.Hitbox.Intersects(enemy2.Hitbox))
+                    _currentGameState = gamestates.Paused;
+                }
+
+                _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, screenSize, _sensitivity);
+                _player.Update(_keyboardState);
+
+                foreach (Enemy enemy in Enemies)
+                {
+                    foreach (Enemy enemy2 in Enemies)
                     {
-                        enemy.Knockback(enemy2.Position);
+                        if (enemy.Hitbox.Intersects(enemy2.Hitbox))
+                        {
+                            enemy.Knockback(enemy2.Position);
+                        }
                     }
                 }
-            }
-            for (int i = 0; i < _squareParticles.Count; i++)
-            {
-                var particle = _squareParticles[i];
-                int LifeTime = (int)(DateTime.Now - particle.CreationTime).TotalMilliseconds;
-                if (rnd.Next(0, LifeTime) > 750)
+                for (int i = 0; i < _squareParticles.Count; i++)
                 {
-                    _squareParticles.RemoveAt(i);
-                    i--;
-                    continue;
-                }
-                particle.Float(4);
-            }
-            for (int i = 0; i < Enemies.Count; i++)
-            {
-                var BoundingBox = new BoundingBox[] { };
-                Enemies[i].Update(in _player, in rnd, ref BoundingBox, _seedMapper, MapCellSize);
-                if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 20000 * 20000)
-                {
-                    Enemies.RemoveAt(i);
-                    i--;
-                    continue;
-                }
-            }
-            for (int i = 0; i < _projectiles.Count; i++)
-            {
-                var projectile = _projectiles[i];
-                if (projectile.Move(_seedMapper, MapCellSize))
-                {
-                    _squareParticles.AddRange(projectile.HitGround(rnd));
-                    _projectiles.Remove(projectile);
-                    i--;
-                    continue;
-                }
-                bool HitSomething = false;
-                if (projectile.TargetType == TargetType.Enemy)
-                {
-                    for (int j = 0; j < Enemies.Count; j++)
+                    var particle = _squareParticles[i];
+                    int LifeTime = (int)(DateTime.Now - particle.CreationTime).TotalMilliseconds;
+                    if (rnd.Next(0, LifeTime) > 750)
                     {
-                        var enemy = Enemies[j];
-                        if (enemy.Hitbox.Intersects(projectile.HitBox))
+                        _squareParticles.RemoveAt(i);
+                        i--;
+                        continue;
+                    }
+                    particle.Float(4);
+                }
+                for (int i = 0; i < Enemies.Count; i++)
+                {
+                    var BoundingBox = new BoundingBox[] { };
+                    Enemies[i].Update(in _player, in rnd, ref BoundingBox, _seedMapper, MapCellSize);
+                    if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 20000 * 20000)
+                    {
+                        Enemies.RemoveAt(i);
+                        i--;
+                        continue;
+                    }
+                }
+                for (int i = 0; i < _projectiles.Count; i++)
+                {
+                    var projectile = _projectiles[i];
+                    if (projectile.Move(_seedMapper, MapCellSize))
+                    {
+                        _squareParticles.AddRange(projectile.HitGround(rnd));
+                        _projectiles.Remove(projectile);
+                        i--;
+                        continue;
+                    }
+                    bool HitSomething = false;
+                    if (projectile.TargetType == TargetType.Enemy)
+                    {
+                        for (int j = 0; j < Enemies.Count; j++)
                         {
-                            Debug.WriteLine("Enemy Hit!");
-                            HitSomething = true;
-                            enemy.EnemyIsHit(ref _player, _player.Position, projectile.HitDamage);
-                            if (enemy.Health <= 0)
+                            var enemy = Enemies[j];
+                            if (enemy.Hitbox.Intersects(projectile.HitBox))
                             {
-                                Enemies.RemoveAt(j--);
-                                continue;
+                                Debug.WriteLine("Enemy Hit!");
+                                HitSomething = true;
+                                enemy.EnemyIsHit(ref _player, _player.Position, projectile.HitDamage);
+                                if (enemy.Health <= 0)
+                                {
+                                    Enemies.RemoveAt(j--);
+                                    continue;
+                                }
                             }
                         }
                     }
-                }
-                else if (projectile.TargetType == TargetType.Player)
-                {
-                    if (projectile.HitBox.Intersects(_player.HitBox))
+                    else if (projectile.TargetType == TargetType.Player)
                     {
-                        // Player hit logic
-                        HitSomething = true;
+                        if (projectile.HitBox.Intersects(_player.HitBox))
+                        {
+                            // Player hit logic
+                            HitSomething = true;
+                        }
                     }
-                }
-                if (HitSomething)
-                {
-                    _squareParticles.AddRange(projectile.HitGround(rnd));
-                    _projectiles.Remove(projectile);
-                    i--;
-                    continue;
-                }
-
-                SquareParticle? particle = projectile.GetParticles(rnd);
-                if (particle == null) { continue; }
-                _squareParticles.Add((SquareParticle)particle);
-            }
-
-            playerTileIndex = new Point(
-                (int)(_player.Position.X / MapCellSize),
-                (int)(_player.Position.Z / MapCellSize)
-                );
-
-            int terrainHeightAtPlayerPosition;
-
-            /* Find tile at player position */
-            int playerXIndex = (int)_player.Center.X / MapCellSize;
-            int playerYIndex = (int)_player.Center.Z / MapCellSize;
-
-
-            /* Bounds check */
-            if (playerXIndex >= 0 && playerYIndex >= 0 && playerXIndex < _seedMapper.width && playerYIndex < _seedMapper.height)
-            {
-                terrainHeightAtPlayerPosition = _seedMapper.Heights[playerXIndex, playerYIndex] - Player.sizeY;
-            }
-            else
-            {
-                terrainHeightAtPlayerPosition = int.MaxValue;
-            }
-
-            /* If player is below terrain, move them to terrain height */
-            if (terrainHeightAtPlayerPosition < _player.Position.Y)
-            {
-                Vector3 normal = _seedMapper.GetNormal(playerXIndex, playerYIndex);
-                if (normal.Y < 0)
-                {
-                    normal *= -1;
-                }
-                _player.HitGround(_keyboardState, normal);
-                _player.SetPosition(
-                new Vector3(
-                    _player.Position.X,
-                    terrainHeightAtPlayerPosition,
-                    _player.Position.Z
-                ));
-                _squareParticles.Add(new SquareParticle(
-                    new Vector3(playerXIndex * MapCellSize, terrainHeightAtPlayerPosition + Player.sizeY, playerYIndex * MapCellSize),
-                    Color.SandyBrown,
-                    -normal * 50
-                    ));
-            }
-            if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y && General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
-            {
-                    _player.Jump();
-            }
-            if (_keyboardState.GetPressedKeyCount() > 0 || _previousKeyboardState.GetPressedKeyCount() > 0)
-            {
-                foreach (Action action in KeyBinds)
-                {
-                    if (action.ActionType == ActionCatagory.AddElement && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
+                    if (HitSomething)
                     {
-                        if (_spellbook.ElementsCount == 3)
+                        _squareParticles.AddRange(projectile.HitGround(rnd));
+                        _projectiles.Remove(projectile);
+                        i--;
+                        continue;
+                    }
+
+                    SquareParticle? particle = projectile.GetParticles(rnd);
+                    if (particle == null) { continue; }
+                    _squareParticles.Add((SquareParticle)particle);
+                }
+
+                playerTileIndex = new Point(
+                    (int)(_player.Position.X / MapCellSize),
+                    (int)(_player.Position.Z / MapCellSize)
+                    );
+
+                int terrainHeightAtPlayerPosition;
+
+                /* Find tile at player position */
+                int playerXIndex = (int)_player.Center.X / MapCellSize;
+                int playerYIndex = (int)_player.Center.Z / MapCellSize;
+
+
+                /* Bounds check */
+                if (playerXIndex >= 0 && playerYIndex >= 0 && playerXIndex < _seedMapper.width && playerYIndex < _seedMapper.height)
+                {
+                    terrainHeightAtPlayerPosition = _seedMapper.Heights[playerXIndex, playerYIndex] - Player.sizeY;
+                }
+                else
+                {
+                    terrainHeightAtPlayerPosition = int.MaxValue;
+                }
+
+                /* If player is below terrain, move them to terrain height */
+                if (terrainHeightAtPlayerPosition < _player.Position.Y)
+                {
+                    Vector3 normal = _seedMapper.GetNormal(playerXIndex, playerYIndex);
+                    if (normal.Y < 0)
+                    {
+                        normal *= -1;
+                    }
+                    _player.HitGround(_keyboardState, normal);
+                    _player.SetPosition(
+                    new Vector3(
+                        _player.Position.X,
+                        terrainHeightAtPlayerPosition,
+                        _player.Position.Z
+                    ));
+                    _squareParticles.Add(new SquareParticle(
+                        new Vector3(playerXIndex * MapCellSize, terrainHeightAtPlayerPosition + Player.sizeY, playerYIndex * MapCellSize),
+                        Color.SandyBrown,
+                        -normal * 50
+                        ));
+                }
+                if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y && General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
+                {
+                    _player.Jump();
+                }
+                if (_keyboardState.GetPressedKeyCount() > 0 || _previousKeyboardState.GetPressedKeyCount() > 0)
+                {
+                    foreach (Action action in KeyBinds)
+                    {
+                        if (action.ActionType == ActionCatagory.AddElement && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
+                        {
+                            if (_spellbook.ElementsCount == 3)
+                            {
+                                _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
+                            }
+                            _spellbook.AddElement((Element)action.Value);
+                        }
+                        else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
                         {
                             _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
                         }
-                        _spellbook.AddElement((Element)action.Value);
                     }
-                    else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
-                    {
-                        _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
-                    }
+
+                }
+            }
+            else if (Paused)
+            {
+                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Escape))
+                {
+                    _currentGameState = gamestates.Playing;
+                }
+                PauseMenu.Options input = (PauseMenu.Options)_pauseMenu.GetClickedButtonBehaviorValue(_previousMouseState, _mouseState);
+                
+                switch (input)
+                {
+                    case PauseMenu.Options.Resume:
+                        _currentGameState = gamestates.Playing;
+                        break;
+                    case PauseMenu.Options.Settings:
+                        _currentGameState = gamestates.SettingsMenu;
+                        break;
+                    case PauseMenu.Options.Quit:
+                        Exit();
+                        break;
                 }
 
             }
-
+            else if (SettingsMenu)
+            {
+                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Escape))
+                {
+                    _currentGameState = gamestates.Playing;
+                }
+                var value = _settingsMenu.getChanges(_previousMouseState, _mouseState, _keyboardState);
+                if (value != null)
+                {
+                    
+                    (int index, Keys newValue) = value.GetValueOrDefault();
+                    
+                        Debug.WriteLine((Actions)index);
+                        Debug.WriteLine(newValue);
+                    KeyBinds[index].Key = newValue;
+                }
+            }
             _previousMouseState = _mouseState;
             _previousKeyboardState = _keyboardState;
             _previousIsMouseVisible = IsMouseVisible;
@@ -534,7 +601,14 @@ namespace SlimeGame
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             _spriteBatch.Draw(screenTextureBuffer, drawParemeters, Color.White);
             _spriteBatch.End();
-            _pauseMenu.Menu.Draw(_spriteBatch, blankTexture, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
+            if (Paused)
+            {
+                _pauseMenu.Draw(_spriteBatch, blankTexture, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
+            }
+            else if (SettingsMenu)
+            {
+                _settingsMenu.Draw(_spriteBatch, blankTexture, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
+            }
 
             // Cleanup after drawing
             screenTextureBuffer.Dispose();

@@ -16,6 +16,7 @@ namespace SlimeGame.Menus
         public Rectangle ButtonRect;
         public Rectangle TextRect;
         public int BehaviorValue;
+        public Color ButtonColor;
         public bool IsHovered(Vector2 point) => ButtonRect.Contains(point);
         public bool IsHovered(Point point) => ButtonRect.Contains(point);
         public bool IsHovered(MouseState mouseState) => ButtonRect.Contains(new Point(mouseState.X, mouseState.Y));
@@ -25,14 +26,15 @@ namespace SlimeGame.Menus
                    previousMouse.LeftButton == ButtonState.Released &&
                    currentMouse.LeftButton == ButtonState.Pressed;
         }
-        public MenuButton(string text, Rectangle buttonRect, Rectangle textRect, int behaviorValue)
+        public MenuButton(string text, Rectangle buttonRect, Rectangle textRect, int behaviorValue, Color buttonColor = new())
         {
             Text = text;
             ButtonRect = buttonRect;
             TextRect = textRect;
             BehaviorValue = behaviorValue;
+            ButtonColor = buttonColor;
         }
-        public MenuButton(Rectangle buttonRect, SpriteFont spriteFont, int behaviorValue, string text)
+        public MenuButton(Rectangle buttonRect, SpriteFont spriteFont, int behaviorValue, string text, Color buttonColor = new())
         {
             Text = text;
             ButtonRect = buttonRect;
@@ -46,13 +48,16 @@ namespace SlimeGame.Menus
                 );
 
             BehaviorValue = behaviorValue;
+            ButtonColor = buttonColor;
         }
 
-        public void Draw(SpriteBatch spriteBatch, RenderTarget2D renderTarget2D, Texture2D rectTexture, SpriteFont font, Color buttonColor, Color textColor, Point mousePos)
+        public void Draw(SpriteBatch spriteBatch, RenderTarget2D renderTarget2D, Texture2D rectTexture, SpriteFont font, Color textColor, Point mousePos)
         {
+            Color buttonColor = ButtonColor;
+
             if (IsHovered(mousePos))
             {
-                buttonColor = Color.Lerp(buttonColor, Color.White, 0.3f);
+                buttonColor = Color.Lerp(ButtonColor, Color.White, 0.3f);
             }
 
             // Draw button text
