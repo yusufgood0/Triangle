@@ -1,19 +1,20 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using SlimeGame.Enemies;
 using SlimeGame.Generation;
 using SlimeGame.Menus;
 using SlimeGame.Models;
 using SlimeGame.Models.Shapes;
 using static System.Collections.Specialized.BitVector32;
+using static SlimeGame.Game1;
 namespace SlimeGame
 {
     public class Game1 : Game
@@ -29,8 +30,7 @@ namespace SlimeGame
         private bool FillScreen = false;
         private Rectangle drawParemeters;
         private float _sensitivity = 0.01f;
-        private KeyboardState _keyboardState;
-        private KeyboardState _previousKeyboardState;
+        private MasterInput _masterInput = new MasterInput();
         private MouseState _mouseState;
         private MouseState _previousMouseState;
         private List<GenericModel> _models = new List<GenericModel>();
@@ -48,7 +48,6 @@ namespace SlimeGame
         private Vector3 lightSource;
         private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
         private List<Enemy> Enemies = new();
-        private Action[] KeyBinds = new Action[5];
         private PauseMenu _pauseMenu;
         private SettingsMenu _settingsMenu;
         private gamestates _currentGameState = gamestates.Playing;
@@ -95,12 +94,6 @@ namespace SlimeGame
             blankTexture.SetData(new Color[] { Color.White });
             // */
 
-            /* Initilize Keybinds with early values */
-            KeyBinds[(int)Actions.AddFire] = (new Action(Keys.D1, ActionCatagory.AddElement, (int)Element.Fire));
-            KeyBinds[(int)Actions.AddWater] = (new Action(Keys.D2, ActionCatagory.AddElement, (int)Element.Water));
-            KeyBinds[(int)Actions.AddAir] = (new Action(Keys.D3, ActionCatagory.AddElement, (int)Element.Air));
-            KeyBinds[(int)Actions.AddEarth] = (new Action(Keys.D4, ActionCatagory.AddElement, (int)Element.Earth));
-            KeyBinds[(int)Actions.CastSpell] = (new Action(Keys.Q, ActionCatagory.CastSpell, 0));
 
             /* randomly places many orbs around for testing 
             for (int i = 0; i < 1250; i++)
@@ -154,7 +147,7 @@ namespace SlimeGame
                 drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
             }
             _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, drawParemeters);
-            _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, drawParemeters);
+            _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters);
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
 
@@ -218,28 +211,51 @@ namespace SlimeGame
 
 
             Square.UpdateConstants(FOV);
-            SlimeGame.Models.Shapes.Triangle.UpdateConstants(FOV);
+            Triangle.UpdateConstants(FOV);
             Mesh.UpdateConstants(FOV);
         }
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape) && Keyboard.GetState().IsKeyDown(Keys.LeftAlt))
+            if (_masterInput.OnPress(Buttons.Back) || _masterInput.OnPress(Keys.Escape) && _masterInput.OnPress(Keys.LeftAlt))
                 Exit();
 
-            _keyboardState = Keyboard.GetState();
+            _previousMouseState = _mouseState;
             _mouseState = Mouse.GetState();
+            _previousIsMouseVisible = IsMouseVisible;
+            _masterInput.UpdateStates();
+            IsMouseVisible = !Playing || !IsActive;
 
-            IsMouseVisible = !Playing;
+            if (_masterInput.OnPress(KeybindActions.GamePadClick))
+            {
+                _mouseState = new MouseState(
+                _mouseState.X, _mouseState.Y, _mouseState.ScrollWheelValue,                // X, Y, ScrollWheelValue
+                ButtonState.Pressed,        // LeftButton
+                _mouseState.MiddleButton,       // MiddleButton
+                _mouseState.RightButton,       // RightButton
+                _mouseState.XButton1,       // XButton1
+                _mouseState.XButton2        // XButton2
+            );
+            }
+
+            Vector2 controllerOffset = 10 * _masterInput.GamePadState.ThumbSticks.Right;
+            controllerOffset.Y *= -1;
+
+            if (controllerOffset != Vector2.Zero)
+            {
+                Point newMousePos = _mouseState.Position + controllerOffset.ToPoint();
+                Mouse.SetPosition(newMousePos.X, newMousePos.Y);
+            }
+            
 
             if (Playing)
             {
-                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Escape))
+                if (_masterInput.OnPress(KeybindActions.BackButton))
                 {
                     _currentGameState = gamestates.Paused;
                 }
 
                 _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, screenSize, _sensitivity);
-                _player.Update(_keyboardState);
+                _player.Update(_masterInput);
 
                 foreach (Enemy enemy in Enemies)
                 {
@@ -354,7 +370,7 @@ namespace SlimeGame
                     {
                         normal *= -1;
                     }
-                    _player.HitGround(_keyboardState, normal);
+                    _player.HitGround(_masterInput.KeyboardState, normal);
                     _player.SetPosition(
                     new Vector3(
                         _player.Position.X,
@@ -367,38 +383,46 @@ namespace SlimeGame
                         -normal * 50
                         ));
                 }
-                if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y && General.OnPress(_keyboardState, _previousKeyboardState, Keys.Space))
+                if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y && _masterInput.IsPressed(KeybindActions.Jump))
                 {
                     _player.Jump();
                 }
-                if (_keyboardState.GetPressedKeyCount() > 0 || _previousKeyboardState.GetPressedKeyCount() > 0)
+                bool AddedElement = false;
+                int currentElements = _spellbook.ElementsCount;
+                if (_masterInput.OnPress(KeybindActions.AddElementFire))
                 {
-                    foreach (Action action in KeyBinds)
-                    {
-                        if (action.ActionType == ActionCatagory.AddElement && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
-                        {
-                            if (_spellbook.ElementsCount == 3)
-                            {
-                                _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
-                            }
-                            _spellbook.AddElement((Element)action.Value);
-                        }
-                        else if (action.ActionType == ActionCatagory.CastSpell && General.OnPress(_keyboardState, _previousKeyboardState, action.Key))
-                        {
-                            _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
-                        }
-                    }
-
+                    _spellbook.AddElement(Element.Fire);
+                    AddedElement = true;
+                }
+                if (_masterInput.OnPress(KeybindActions.AddElementAir))
+                {
+                    _spellbook.AddElement(Element.Air);
+                    AddedElement = true;
+                }
+                if (_masterInput.OnPress(KeybindActions.AddElementEarth))
+                {
+                    _spellbook.AddElement(Element.Earth);
+                    AddedElement = true;
+                }
+                if (_masterInput.OnPress(KeybindActions.AddElementWater))
+                {
+                    _spellbook.AddElement(Element.Water);
+                    AddedElement = true;
+                }
+                if (_masterInput.IsPressed(KeybindActions.CastSpell) || currentElements == 3 && AddedElement)
+                {
+                    _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
+                    _spellbook.ClearElements();
                 }
             }
             else if (Paused)
             {
-                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Escape))
+                if (_masterInput.OnPress(KeybindActions.BackButton))
                 {
                     _currentGameState = gamestates.Playing;
                 }
-                PauseMenu.Options input = (PauseMenu.Options)_pauseMenu.GetClickedButtonBehaviorValue(_previousMouseState, _mouseState);
-                
+                PauseMenu.Options input = (PauseMenu.Options)_pauseMenu.GetBehaviorValueOnClick(_previousMouseState, _mouseState);
+
                 switch (input)
                 {
                     case PauseMenu.Options.Resume:
@@ -415,24 +439,13 @@ namespace SlimeGame
             }
             else if (SettingsMenu)
             {
-                if (General.OnPress(_keyboardState, _previousKeyboardState, Keys.Escape))
+                if (_masterInput.OnPress(KeybindActions.BackButton))
                 {
                     _currentGameState = gamestates.Playing;
                 }
-                var value = _settingsMenu.getChanges(_previousMouseState, _mouseState, _keyboardState);
-                if (value != null)
-                {
-                    
-                    (int index, Keys newValue) = value.GetValueOrDefault();
-                    
-                        Debug.WriteLine((Actions)index);
-                        Debug.WriteLine(newValue);
-                    KeyBinds[index].Key = newValue;
-                }
+                _settingsMenu.Update(_masterInput, _mouseState, _previousMouseState);
             }
-            _previousMouseState = _mouseState;
-            _previousKeyboardState = _keyboardState;
-            _previousIsMouseVisible = IsMouseVisible;
+
             base.Update(gameTime);
         }
 

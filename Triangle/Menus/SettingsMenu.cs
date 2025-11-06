@@ -13,61 +13,87 @@ namespace SlimeGame.Menus
 {
     internal class SettingsMenu : Menu
     {
-        public int SelectedOption = -1;
+        public int SelectedMenuButton = -1;
 
         static Rectangle VirtualRect = new Rectangle(0, 0, 1000, 1000);
         static Point ButtonSize = new Point(400, 100);
-        static Vector2 Decrease = new (0, 100);
 
         static Point KeyRebindPos = new(100, 0);
         static Point ForwardOffset = new(ButtonSize.X, 0);
         static Point BackwardOffset = new(ButtonSize.X, ButtonSize.Y * 2);
         static Point LeftOffset = new(0, ButtonSize.Y);
         static Point RightOffset = new(ButtonSize.X * 2, ButtonSize.Y);
-        static MenuButton[] buttons(SpriteFont font) => new MenuButton[]
+        static MenuButton[] buttons(SpriteFont font, MasterInput masterInput) => new MenuButton[]
             {
-                new MenuButton(new Rectangle(KeyRebindPos + (Decrease*0).ToPoint(), ButtonSize), font, (int)Game1.Actions.AddFire, "F", SpellBook.GetElementColor(Element.Fire)),
-                new MenuButton(new Rectangle(KeyRebindPos + (Decrease*1).ToPoint(), ButtonSize), font, (int)Game1.Actions.AddWater, "W", SpellBook.GetElementColor(Element.Water)),
-                new MenuButton(new Rectangle(KeyRebindPos + (Decrease*2).ToPoint(), ButtonSize), font, (int)Game1.Actions.AddAir, "E", SpellBook.GetElementColor(Element.Earth)),
-                new MenuButton(new Rectangle(KeyRebindPos + (Decrease*3).ToPoint(), ButtonSize), font, (int)Game1.Actions.AddEarth, "A", SpellBook.GetElementColor(Element.Air)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*0), ButtonSize), font, 0, masterInput.Keybinds[KeybindActions.AddElementFire].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Fire)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*1), ButtonSize), font, 1, masterInput.Keybinds[KeybindActions.AddElementWater].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Water)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*2), ButtonSize), font, 2, masterInput.Keybinds[KeybindActions.AddElementEarth].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Earth)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*3), ButtonSize), font, 3, masterInput.Keybinds[KeybindActions.AddElementAir].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Air)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*4), ButtonSize), font, 4, masterInput.Keybinds[KeybindActions.CastSpell].KeyboardKey.ToString(), Color.Plum),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*5), ButtonSize), font, 5, masterInput.Keybinds[KeybindActions.Jump].KeyboardKey.ToString(), Color.Plum),
+
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*0), ButtonSize), font, 6, masterInput.Keybinds[KeybindActions.AddElementFire].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Fire)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*1), ButtonSize), font, 7, masterInput.Keybinds[KeybindActions.AddElementWater].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Water)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*2), ButtonSize), font, 8, masterInput.Keybinds[KeybindActions.AddElementEarth].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Earth)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*3), ButtonSize), font, 9, masterInput.Keybinds[KeybindActions.AddElementAir].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Air)),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*4), ButtonSize), font, 10, masterInput.Keybinds[KeybindActions.CastSpell].GamepadButton.ToString(), Color.Plum),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*5), ButtonSize), font, 11, masterInput.Keybinds[KeybindActions.Jump].KeyboardKey.ToString(), Color.Plum),
             };
-        public SettingsMenu(GraphicsDevice graphicsDevice, SpriteFont font, Rectangle menuParameters) :            
-            base(graphicsDevice, menuParameters, VirtualRect, buttons(font))
+        int KeybindsCount;
+        public SettingsMenu(GraphicsDevice graphicsDevice, SpriteFont font, MasterInput masterInput, Rectangle menuParameters) :
+            base(graphicsDevice, menuParameters, VirtualRect, buttons(font, masterInput))
         {
+            KeybindsCount = buttons(font, masterInput).Length / 2;
         }
 
-        public Keys GetPressedKey(KeyboardState keyboardState)
+        public void Update(MasterInput input, MouseState mouseState, MouseState previousMouseState)
         {
-            if (keyboardState.GetPressedKeyCount() > 0)
+            if (SelectedMenuButton != -1 && !input.IsPressed(KeybindActions.GamePadClick))
             {
-                Debug.WriteLine(keyboardState.GetPressedKeys()[0]);
-                return keyboardState.GetPressedKeys()[0];
-
-            }
-            return Keys.None;
-        }
-        public (int, Keys)? getChanges(MouseState previousMouseState, MouseState mouseState, KeyboardState keyboard)
-        {
-            if (SelectedOption != -1)
-            {
-                Keys PressedKey = GetPressedKey(keyboard);
-                if (PressedKey != Keys.None)
+                if (input.IsPressed(KeybindActions.BackButton))
                 {
-                    var returnValue = (SelectedOption, PressedKey);
-                    ChangeString(SelectedOption, PressedKey.ToString());
-                    SelectedOption = -1;
-                    return returnValue;
+                    SelectedMenuButton = -1;
                 }
+
+                KeybindActions actionToRebind;
+                if (SelectedMenuButton > 3)
+                {
+                    actionToRebind = (KeybindActions)(SelectedMenuButton % KeybindsCount);
+                    Buttons[] pressedButtons = input.PressedButtons();
+                    Buttons pressedButton;
+                    if (pressedButtons.Length > 0)
+                    {
+                        pressedButton = pressedButtons[0];
+                        input.ChangeKeybind(actionToRebind, pressedButton);
+                        ChangeString(SelectedMenuButton, pressedButton.ToString());
+                        SelectedMenuButton = -1;
+                        return;
+                    }
+                    return;
+                }
+                else
+                {
+                    actionToRebind = (KeybindActions)SelectedMenuButton;
+
+                    Keys[] pressedKeys = input.PressedKeys();
+                    Keys pressedKey;
+                    if (pressedKeys.Length > 0)
+                    {
+                        pressedKey = pressedKeys[0];
+                        input.ChangeKeybind(actionToRebind, pressedKey);
+                        ChangeString(SelectedMenuButton, pressedKey.ToString());
+                        SelectedMenuButton = -1;
+                        return;
+                    }
+                }
+                return;
             }
-            if (SelectedOption == -1)
+            else if (mouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed)
             {
-                SelectedOption = GetClickedButtonBehaviorValue(previousMouseState, mouseState);
+                SelectedMenuButton = GetBehaviorValue(previousMouseState, mouseState);
+                Debug.WriteLine(SelectedMenuButton);
+                return;
             }
-            else
-            {
-                Debug.WriteLine(SelectedOption);
-            }
-            return null;
         }
     }
 }

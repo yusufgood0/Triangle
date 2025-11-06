@@ -44,13 +44,16 @@ namespace SlimeGame.Menus
             spriteBatch.Draw(_renderTarget, drawRect, Color.White);
             spriteBatch.End();
         }
-        public int GetClickedButtonBehaviorValue(MouseState previousMouse, MouseState currentMouse)
+        public int GetBehaviorValueOnClick(MouseState previousMouse, MouseState currentMouse)
         {
             if (previousMouse.LeftButton != ButtonState.Released || currentMouse.LeftButton != ButtonState.Pressed)
             {
                 return -1; // No click detected
             }
-
+            return GetBehaviorValue(previousMouse, currentMouse);
+        }
+        public int GetBehaviorValue(MouseState previousMouse, MouseState currentMouse)
+        {
             Vector2 virtualPosition = GetVirtualPosition(currentMouse);
             foreach (var button in _menuButtons)
             {

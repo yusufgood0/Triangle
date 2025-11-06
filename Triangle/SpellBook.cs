@@ -74,14 +74,20 @@ namespace SlimeGame
                     }
                 }
             }
+
         }
         public void TryCast(List<Projectile> projectiles, ref Player player, ref List<SquareParticle> squareParticles)
         {
-            if (ElementsCount == 3)
+            if (ElementsCount != 3)
             {
-                CastSpell(projectiles, ref player, ref squareParticles);
+                return;
             }
 
+            CastSpell(projectiles, ref player, ref squareParticles);
+            ClearElements();
+        }
+        public void ClearElements()
+        {
             for (int j = 0; j < _elements.Length; j++)
             {
                 _elements[j] = null;

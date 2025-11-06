@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.Menus;
 namespace SlimeGame
 {
     internal class Player
@@ -125,13 +127,10 @@ namespace SlimeGame
             }
         }
         */
-        public void Update(KeyboardState keyboardState)
+        public void Update(MasterInput masterInput)
         {
-            if (IsSurvival)
-            {
-                ApplyGravity();
-            }
-            MoveKeyPressed(keyboardState);
+            ApplyGravity();
+            MoveKeyPressed(masterInput);
             Friction();
             UpdateShake();
             Move(Speed);
@@ -162,15 +161,6 @@ namespace SlimeGame
                 return true;
             }
 
-            //if (_speed.Y > 15 &&
-            //    (DateTime.Now - lastHit).TotalMilliseconds > 200
-            //    )
-            //{
-            //    _speed = Vector3.Reflect(_speed, normal) * 1f;
-            //    lastHit = DateTime.Now;
-            //    return true;
-            //}
-
             _speed.Y = Math.Min(5, _speed.Y);
             return false;
         }
@@ -197,39 +187,46 @@ namespace SlimeGame
             UP = Keys.Space,
             DOWN = Keys.LeftShift
         }
-        public void MoveKeyPressed(KeyboardState keyboardState)
+        public void MoveKeyPressed(MasterInput masterInput)
         {
             Vector3 movement = Vector3.Zero;
 
             var dirVector = this.dirVector;
             dirVector.Y = 0;
             dirVector.Normalize();
+
             Vector3 RightDirection = Vector3.Cross(dirVector, PlayerCamera.Up);
 
-            if (keyboardState.IsKeyDown(Keys.W))
+            if (masterInput.IsPressed(Keys.W))
                 movement += dirVector;
-            if (keyboardState.IsKeyDown(Keys.S))
+            if (masterInput.IsPressed(Keys.S))
                 movement -= dirVector;
-            if (keyboardState.IsKeyDown(Keys.A))
+            if (masterInput.IsPressed(Keys.A))
                 movement -= RightDirection;
-            if (keyboardState.IsKeyDown(Keys.D))
+            if (masterInput.IsPressed(Keys.D))
                 movement += RightDirection;
 
             // Normalize if moving diagonally
-            if (movement != Vector3.Zero)
+            if (movement == Vector3.Zero)
+            {
+                Vector2 rightJoystickDirection = masterInput.GamePadState.ThumbSticks.Left;
+                if (rightJoystickDirection == Vector2.Zero) return;
+                rightJoystickDirection.Normalize();
+
+                float cosAngle = (float)Math.Cos(-_angle.X);
+                float sinAngle = (float)Math.Sin(-_angle.X);
+
+                float rotatedX = rightJoystickDirection.X * cosAngle - rightJoystickDirection.Y * sinAngle;
+                float rotatedY = rightJoystickDirection.X * sinAngle + rightJoystickDirection.Y * cosAngle;
+
+                movement += new Vector3(rotatedX, 0, rotatedY);
+            }
+            else
             {
                 movement.Normalize();
             }
 
-            if (IsCreative)
-            {
-                if (keyboardState.IsKeyDown(Keys.Space))
-                    movement.Y -= 1;
-                if (keyboardState.IsKeyDown(Keys.LeftShift))
-                    movement.Y += 1;
-            }
-
-            _speed += movement * 1f;
+            _speed += movement;
         }
         public void SavePosition()
         {
@@ -294,7 +291,7 @@ namespace SlimeGame
         }
         public void Shake(float intensity, Random rnd)
         {
-            _shakeDifference = new (
+            _shakeDifference = new(
                 (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity),
                 (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity)
                 );
