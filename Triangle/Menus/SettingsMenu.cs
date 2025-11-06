@@ -8,6 +8,8 @@ using System.Xml.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.GameAsset;
+using SlimeGame.Input;
 
 namespace SlimeGame.Menus
 {

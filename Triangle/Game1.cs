@@ -9,7 +9,9 @@ using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SlimeGame.Enemies;
+using SlimeGame.GameAsset;
 using SlimeGame.Generation;
+using SlimeGame.Input;
 using SlimeGame.Menus;
 using SlimeGame.Models;
 using SlimeGame.Models.Shapes;
@@ -74,7 +76,7 @@ namespace SlimeGame
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.IsFullScreen = false;
+            _graphics.IsFullScreen = true;
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
         }

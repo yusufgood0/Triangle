@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
+using SlimeGame.GameAsset;
 using SlimeGame.Models.Shapes;
 
 namespace SlimeGame.Models

@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Input;
 
-namespace SlimeGame.Menus
+namespace SlimeGame.Input
 {
     [Flags]
     public enum InputType : byte
@@ -61,7 +61,7 @@ namespace SlimeGame.Menus
         }
         public InputType ActiveInputType()
         {
-            InputType keyboardActive = (KeyboardState.GetPressedKeyCount() > 0) ? InputType.Keyboard : InputType.None;
+            InputType keyboardActive = KeyboardState.GetPressedKeyCount() > 0 ? InputType.Keyboard : InputType.None;
             InputType gamepadActive = InputType.None;
             foreach (Buttons button in AllButtons)
             {
@@ -71,7 +71,7 @@ namespace SlimeGame.Menus
                     break;
                 }
             }
-            return (keyboardActive | gamepadActive);
+            return keyboardActive | gamepadActive;
         }
         public Keys[] PressedKeys()
             => KeyboardState.GetPressedKeys();

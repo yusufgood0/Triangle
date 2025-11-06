@@ -9,7 +9,7 @@ using System.Xml.Linq;
 using Microsoft.Xna.Framework;
 using SlimeGame.Models.Shapes;
 
-namespace SlimeGame
+namespace SlimeGame.GameAsset
 {
     public enum Element
     {
@@ -68,7 +68,7 @@ namespace SlimeGame
                 if (_elements[i] == null)
                 {
                     _elements[i] = elementToAdd;
-                    if (i < (_maxElements - 1))
+                    if (i < _maxElements - 1)
                     {
                         return;
                     }
@@ -110,7 +110,7 @@ namespace SlimeGame
         }
         public static int ConvertSpellIndex(Element a, Element b, Element c)
         {
-            return ((int)a) + ((int)b) + ((int)c);
+            return (int)a + (int)b + (int)c;
         }
         internal interface Spell
         {

@@ -9,7 +9,7 @@ using SlimeGame.Generation;
 using SlimeGame.Models;
 using SlimeGame.Models.Shapes;
 
-namespace SlimeGame
+namespace SlimeGame.GameAsset
 {
     internal interface Projectile
     {

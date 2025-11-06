@@ -10,8 +10,9 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using SlimeGame.Menus;
-namespace SlimeGame
+using SlimeGame.Input;
+
+namespace SlimeGame.GameAsset
 {
     internal class Player
     {
@@ -267,7 +268,7 @@ namespace SlimeGame
             }
             if (!IsMouseVisible)
             {
-                Mouse.SetPosition((int)screenSize.X / 2, (int)screenSize.Y / 2);
+                Mouse.SetPosition(screenSize.X / 2, screenSize.Y / 2);
             }
         }
         public void UpdateRotation(Point screenSize, float sensitivity)

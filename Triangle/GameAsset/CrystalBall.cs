@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SlimeGame.Models;
 using SlimeGame.Models.Shapes;
-namespace SlimeGame
+namespace SlimeGame.GameAsset
 {
     internal struct CrystalBall(Vector3 orbOffset)
     {
@@ -37,13 +37,13 @@ namespace SlimeGame
 
             /* Slowly changes colorValue to target value */
             int target = 200 - spellbook.ElementsCount * 45;
-            if (this.colorValue < target)
+            if (colorValue < target)
             {
-                this.colorValue = Math.Min(this.colorValue + 5, target);
+                colorValue = Math.Min(colorValue + 5, target);
             }
-            else if (this.colorValue > target)
+            else if (colorValue > target)
             {
-                this.colorValue = Math.Max(this.colorValue - 5, target);
+                colorValue = Math.Max(colorValue - 5, target);
             }
         }
         public Shape[] GetRenderModel(SpellBook spellbook)
@@ -55,13 +55,13 @@ namespace SlimeGame
             Color[] colors = spellbook.ElementColors;
 
             /* Background color of orb */
-            Color backGroundColor = new Color(this.colorValue, 0, this.colorValue);
+            Color backGroundColor = new Color(colorValue, 0, colorValue);
 
             /* Iterates and draws each triangle in the orb */
             for (int i = 0; i < shapes.Length; i++)
             {
-                int iPlusSwirlPosition = this.SwirlPos + i;
-                int columns = CrystalBall.SphereQuality + 1;
+                int iPlusSwirlPosition = SwirlPos + i;
+                int columns = SphereQuality + 1;
                 int lerpAmount = iPlusSwirlPosition % columns;
                 int colorIndex = iPlusSwirlPosition / columns % 3;
                 Color color = colors[colorIndex];

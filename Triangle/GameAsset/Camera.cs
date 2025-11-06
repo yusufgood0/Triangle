@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 
-namespace SlimeGame
+namespace SlimeGame.GameAsset
 {
     public class Camera
     {
@@ -97,7 +97,7 @@ namespace SlimeGame
             // create a new forward from rotation
             Forward = new Vector3(
             (float)(Math.Cos(pitch) * Math.Sin(yaw)),
-            (float)(Math.Sin(pitch)),
+            (float)Math.Sin(pitch),
             (float)(Math.Cos(pitch) * Math.Cos(yaw))
             );
             //Forward.Normalize();

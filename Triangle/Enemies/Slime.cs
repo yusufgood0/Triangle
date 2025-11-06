@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SlimeGame.Generation;
 using SlimeGame.Models;
+using SlimeGame.GameAsset;
 
 namespace SlimeGame.Enemies
 {
