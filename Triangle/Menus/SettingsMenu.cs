@@ -39,7 +39,7 @@ namespace SlimeGame.Menus
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*2), ButtonSize), font, 8, masterInput.Keybinds[KeybindActions.AddElementEarth].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Earth)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*3), ButtonSize), font, 9, masterInput.Keybinds[KeybindActions.AddElementAir].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Air)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*4), ButtonSize), font, 10, masterInput.Keybinds[KeybindActions.CastSpell].GamepadButton.ToString(), Color.Plum),
-                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*5), ButtonSize), font, 11, masterInput.Keybinds[KeybindActions.Jump].KeyboardKey.ToString(), Color.Plum),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*5), ButtonSize), font, 11, masterInput.Keybinds[KeybindActions.Jump].GamepadButton.ToString(), Color.Plum),
             };
         int KeybindsCount;
         public SettingsMenu(GraphicsDevice graphicsDevice, SpriteFont font, MasterInput masterInput, Rectangle menuParameters) :
@@ -55,10 +55,11 @@ namespace SlimeGame.Menus
                 if (input.IsPressed(KeybindActions.BackButton))
                 {
                     SelectedMenuButton = -1;
+                    return;
                 }
 
                 KeybindActions actionToRebind;
-                if (SelectedMenuButton > 3)
+                if (SelectedMenuButton > KeybindsCount-1)
                 {
                     actionToRebind = (KeybindActions)(SelectedMenuButton % KeybindsCount);
                     Buttons[] pressedButtons = input.PressedButtons();
