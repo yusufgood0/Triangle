@@ -11,11 +11,10 @@ using SlimeGame.GameAsset;
 
 namespace SlimeGame.Enemies
 {
-    internal class Slime : Enemy
+    internal class Archer : Enemy
     {
         void Enemy.Update(in Player player, in Random rnd, ref BoundingBox[] collisionObject, SeedMapper seedMap, int MapCellSize)
         {
-            CheckHeal(in rnd);
             double TimeSinceLastJump = this.TimeSinceLastJump;
 
             _speed.Y += 1.5f;
@@ -31,36 +30,9 @@ namespace SlimeGame.Enemies
                 _speed.Y = Math.Min(0, _speed.Y);
                 onGround = true;
             }
-            
-            if (onGround)
+            if (FlapCooldown - TimeSinceLastJump < 3)
             {
-                if (JumpCooldown - TimeSinceLastJump < 1)
-                {
-                    _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(SquishFactorDown - _squish), 0.7f) * 0.5f, SquishFactorDown);
-                    if (_squish <= SquishFactorDown)
-                    {
-                        //if (Vector3.DistanceSquared(_position, player.Position) > 40*40)
-                        //{
-                            JumpAtPlayer(player.Position);
-                        //}
-                        //else if (_jumpPattern == JumpPatternLength)
-                        //{
-                        //    JumpAtPlayer(player.Position, JumpMax, JumpStrength);
-                        //    _jumpPattern = 0;
-                        //}
-                        //else
-                        //{
-                        //    _jumpPattern++;
-                        //    JumpAtPlayer(player.Position, rnd.Next(JumpMin, JumpMax), JumpStrength);
-                        //}
-                        onGround = false;
-                        JumpTimer = DateTime.Now;
-                    }
-                }
-            }
-            else
-            {
-                _squish = Math.Clamp(_speed.Y * 5, SquishFactorDown, SquishFactorUp);
+                FlapAtPlayer(player.Position, rnd);
             }
 
             FormModel(TimeSinceLastJump);
@@ -101,7 +73,7 @@ namespace SlimeGame.Enemies
         private const int MaxHealth = 125;
         private const int minHeal = 1;
         private const int maxHeal = 5;
-        private const float JumpCooldown = 2;
+        private const float FlapCooldown = 2;
         private const float SquishFactorUp = 200;
         private const float SquishFactorDown = -100;
         private const float SquishFactorNormal = 50;
@@ -120,39 +92,22 @@ namespace SlimeGame.Enemies
         private DateTime JumpTimer = DateTime.Now;
 
 
-        private void CheckHeal(in Random rnd)
-        {
-            if ((DateTime.Now - HealTimer).TotalSeconds > 2)
-            {
-                HealTimer = DateTime.Now;
-                _health = Math.Min(_health + rnd.Next(minHeal, maxHeal), MaxHealth);
-            }
-        }
         private void FormModel(double TimeSinceLastJump)
         {
             float height = Size + _squish;
-            var newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size, Color.Purple);
+            var newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size, Color.LightYellow);
             _model[0] = newCube;
             _hitbox = new BoundingBox(newCube.Position, newCube.Opposite);
         }
-        private void JumpAtPlayer(Vector3 playerPos, int jumpheight, int jumpStrength)
-        {
-            Vector3 dir = playerPos - _position;
-            dir.Y = 0;
-            dir.Normalize();
-            dir *= jumpStrength;
-            dir.Y = -jumpheight;
-            _speed += dir;
-        }
-        private void JumpAtPlayer(Vector3 playerPos)
+        private void FlapAtPlayer(Vector3 playerPos, in Random rnd)
         {
             Vector3 dir = playerPos - _position;
 
-            _speed.Z += Math.Clamp(dir.Z * 0.05f, -50, 50);
-            _speed.X += Math.Clamp(dir.X * 0.05f, -50, 50);
-            _speed.Y += Math.Max(dir.Y * 0.1f - JumpMin, -100);
+            _speed.Z += Math.Clamp(dir.Z * 0.05f, -10, 10);
+            _speed.X += Math.Clamp(dir.X * 0.05f, -10, 10);
+            _speed.Y += rnd.Next(-10, -30);
         }
-        public Slime(Vector3 position)
+        public Archer(Vector3 position)
         {
             _position = position;
             _speed = Vector3.Down * 25;
