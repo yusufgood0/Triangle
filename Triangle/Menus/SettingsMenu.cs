@@ -25,27 +25,27 @@ namespace SlimeGame.Menus
         static Point BackwardOffset = new(ButtonSize.X, ButtonSize.Y * 2);
         static Point LeftOffset = new(0, ButtonSize.Y);
         static Point RightOffset = new(ButtonSize.X * 2, ButtonSize.Y);
-        static MenuButton[] buttons(SpriteFont font, MasterInput masterInput) => new MenuButton[]
+        static MenuButton[] buttons(SpriteFont font, MasterInput masterInput, Color defaultButtonColor) => new MenuButton[]
             {
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*0), ButtonSize), font, 0, masterInput.Keybinds[KeybindActions.AddElementFire].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Fire)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*1), ButtonSize), font, 1, masterInput.Keybinds[KeybindActions.AddElementWater].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Water)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*2), ButtonSize), font, 2, masterInput.Keybinds[KeybindActions.AddElementEarth].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Earth)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*3), ButtonSize), font, 3, masterInput.Keybinds[KeybindActions.AddElementAir].KeyboardKey.ToString(), SpellBook.GetElementColor(Element.Air)),
-                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*4), ButtonSize), font, 4, masterInput.Keybinds[KeybindActions.CastSpell].KeyboardKey.ToString(), Color.Plum),
-                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*5), ButtonSize), font, 5, masterInput.Keybinds[KeybindActions.Jump].KeyboardKey.ToString(), Color.Plum),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*4), ButtonSize), font, 4, masterInput.Keybinds[KeybindActions.CastSpell].KeyboardKey.ToString(), defaultButtonColor),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*0, ButtonSize.Y*5), ButtonSize), font, 5, masterInput.Keybinds[KeybindActions.Jump].KeyboardKey.ToString(), defaultButtonColor),
 
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*0), ButtonSize), font, 6, masterInput.Keybinds[KeybindActions.AddElementFire].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Fire)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*1), ButtonSize), font, 7, masterInput.Keybinds[KeybindActions.AddElementWater].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Water)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*2), ButtonSize), font, 8, masterInput.Keybinds[KeybindActions.AddElementEarth].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Earth)),
                 new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*3), ButtonSize), font, 9, masterInput.Keybinds[KeybindActions.AddElementAir].GamepadButton.ToString(), SpellBook.GetElementColor(Element.Air)),
-                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*4), ButtonSize), font, 10, masterInput.Keybinds[KeybindActions.CastSpell].GamepadButton.ToString(), Color.Plum),
-                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*5), ButtonSize), font, 11, masterInput.Keybinds[KeybindActions.Jump].KeyboardKey.ToString(), Color.Plum),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*4), ButtonSize), font, 10, masterInput.Keybinds[KeybindActions.CastSpell].GamepadButton.ToString(), defaultButtonColor),
+                new MenuButton(new Rectangle(KeyRebindPos + new Point(ButtonSize.X*1, ButtonSize.Y*5), ButtonSize), font, 11, masterInput.Keybinds[KeybindActions.Jump].GamepadButton.ToString(), defaultButtonColor),
             };
         int KeybindsCount;
-        public SettingsMenu(GraphicsDevice graphicsDevice, SpriteFont font, MasterInput masterInput, Rectangle menuParameters) :
-            base(graphicsDevice, menuParameters, VirtualRect, buttons(font, masterInput))
+        public SettingsMenu(GraphicsDevice graphicsDevice, SpriteFont font, MasterInput masterInput, Rectangle menuParameters, Color defaultButtonColor) :
+            base(graphicsDevice, menuParameters, VirtualRect, buttons(font, masterInput, defaultButtonColor))
         {
-            KeybindsCount = buttons(font, masterInput).Length / 2;
+            KeybindsCount = buttons(font, masterInput, defaultButtonColor).Length / 2;
         }
 
         public void Update(MasterInput input, MouseState mouseState, MouseState previousMouseState)
@@ -58,7 +58,7 @@ namespace SlimeGame.Menus
                 }
 
                 KeybindActions actionToRebind;
-                if (SelectedMenuButton > 3)
+                if (SelectedMenuButton > KeybindsCount - 1)
                 {
                     actionToRebind = (KeybindActions)(SelectedMenuButton % KeybindsCount);
                     Buttons[] pressedButtons = input.PressedButtons();

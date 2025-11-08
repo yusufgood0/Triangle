@@ -24,6 +24,9 @@ namespace SlimeGame
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private SpriteFont _spriteFont;
+        private Texture2D _blankTexture; //for testing purposes
+        private Texture2D _gradiantSquare; //for buttons
+        private Color defaultButtonColor = Color.DarkSlateBlue;
         private Player _player;
         private bool _previousIsMouseVisible = false;
         private Point screenSize;
@@ -72,7 +75,6 @@ namespace SlimeGame
             CastSpell = 4
         }
 
-        private Texture2D blankTexture; //for testing purposes
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -92,8 +94,8 @@ namespace SlimeGame
             _graphics.ApplyChanges();
 
             /* Initilizes blank texture as a 1x1 white pixel texture */
-            blankTexture = new Texture2D(GraphicsDevice, 1, 1);
-            blankTexture.SetData(new Color[] { Color.White });
+            _blankTexture = new Texture2D(GraphicsDevice, 1, 1);
+            _blankTexture.SetData(new Color[] { Color.White });
             // */
 
 
@@ -131,6 +133,8 @@ namespace SlimeGame
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             _screenBuffer = new TextureBuffer(screenSize.X / pixelSize, screenSize.Y / pixelSize, Color.Transparent);
             _spriteFont = Content.Load<SpriteFont>("GameFont");
+            _gradiantSquare = Content.Load<Texture2D>("GradiantSquare");
+
             Triangle.Initialize(_spriteBatch, _screenBuffer);
             Square.Initialize(_spriteBatch, _screenBuffer);
             Mesh.Initialize(_spriteBatch, _screenBuffer);
@@ -148,8 +152,8 @@ namespace SlimeGame
 
                 drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
             }
-            _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, drawParemeters);
-            _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters);
+            _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, drawParemeters, defaultButtonColor);
+            _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters, defaultButtonColor);
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
 
@@ -618,11 +622,11 @@ namespace SlimeGame
             _spriteBatch.End();
             if (Paused)
             {
-                _pauseMenu.Draw(_spriteBatch, blankTexture, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
+                _pauseMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
             }
             else if (SettingsMenu)
             {
-                _settingsMenu.Draw(_spriteBatch, blankTexture, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
+                _settingsMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, drawParemeters, _mouseState, Color.Red, Color.White);
             }
 
             // Cleanup after drawing

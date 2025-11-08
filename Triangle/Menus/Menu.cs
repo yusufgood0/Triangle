@@ -30,10 +30,25 @@ namespace SlimeGame.Menus
             _virtualScreen = virtualScreen;
             _menuButtons = menuButtons;
         }
-        public void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Rectangle drawRect, MouseState mouseState, Color buttonColor, Color textColor)
+        public void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Rectangle drawRect, MouseState mouseState, Color buttonColor, Color textColor, int darkenedBox = -1)
         {
+
+            int width = spriteBatch.GraphicsDevice.PresentationParameters.BackBufferWidth;
+            int height = spriteBatch.GraphicsDevice.PresentationParameters.BackBufferHeight;
+
+            Color[] screenSnapshot = new Color[width * height];
+            spriteBatch.GraphicsDevice.GetBackBufferData<Color>(screenSnapshot);
+            Texture2D screenTexture = new Texture2D(spriteBatch.GraphicsDevice, width, height);
+            screenTexture.SetData<Color>(screenSnapshot);
+
+
             spriteBatch.GraphicsDevice.SetRenderTarget(_renderTarget);
             _renderTarget.GraphicsDevice.Clear(Color.RoyalBlue);
+
+            spriteBatch.Begin();
+            spriteBatch.Draw(screenTexture, _virtualScreen, drawRect, Color.White * 0.5f);
+            spriteBatch.End();
+
             foreach (var button in _menuButtons)
             {
                 button.Draw(spriteBatch, _renderTarget, rectTexture, font, textColor, GetVirtualPosition(mouseState).ToPoint());
@@ -43,6 +58,8 @@ namespace SlimeGame.Menus
             spriteBatch.Begin();
             spriteBatch.Draw(_renderTarget, drawRect, Color.White);
             spriteBatch.End();
+
+            screenTexture.Dispose();
         }
         public int GetBehaviorValueOnClick(MouseState previousMouse, MouseState currentMouse)
         {

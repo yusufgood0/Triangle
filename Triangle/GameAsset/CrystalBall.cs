@@ -16,7 +16,7 @@ namespace SlimeGame.GameAsset
         //public Model Model => _model.Move(_position);
         public Vector3 Position => _position;
 
-        public static int SphereQuality = 60;
+        public static int SphereQuality = 40;
         public float SwirlSpeed => _swirlSpeed;
         public int colorValue;
 
