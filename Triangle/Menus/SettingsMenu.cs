@@ -55,6 +55,7 @@ namespace SlimeGame.Menus
                 if (input.IsPressed(KeybindActions.BackButton))
                 {
                     SelectedMenuButton = -1;
+                    return;
                 }
 
                 KeybindActions actionToRebind;

@@ -14,7 +14,6 @@ namespace SlimeGame.Menus
     {
         public Menu Menu;
         static SpriteFont font;
-
         static Rectangle VirtualRect = new Rectangle(0, 0, 1000, 1000);
         static Point ButtonSize = new Point(400, 100);
         static MenuButton[] buttons(SpriteFont font, Color defaultButtonColor) => new MenuButton[]

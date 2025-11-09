@@ -148,7 +148,7 @@ namespace SlimeGame.GameAsset
         }
         public void Dash()
         {
-            _speed += dirVector * 40;
+            _speed += dirVector * 50;
         }
         DateTime lastHit = DateTime.Now;
         public bool HitGround(KeyboardState keyBoardState, Vector3 normal)
@@ -285,6 +285,7 @@ namespace SlimeGame.GameAsset
                 (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity),
                 ((float)rnd.NextDouble() - 1f) / (1f / intensity)
                 );
+            _speed -= dirVector * intensity * 5f;
         }
         public void Shake(Vector2 shakeDifference)
         {
