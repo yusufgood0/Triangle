@@ -24,10 +24,10 @@ namespace SlimeGame.Models.Shapes
                 };
         public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, Vertices, Color); }
         Vector3 Shape.Position => AveragePos;
-        Color Shape.Color 
-        { 
-            get => Color; 
-            set => Color = value; 
+        Color Shape.Color
+        {
+            get => Color;
+            set => Color = value;
         }
 
         static Point _screenCenter;
@@ -111,12 +111,11 @@ namespace SlimeGame.Models.Shapes
                     {
                         int index = yTimesWidth + x;
 
-                        if (distance <= screenBufferDistancePtr[index] &&
-                            IsPointInQuad(x, y, p1, p2, p3, p4))
-                        {
-                            screenBufferColorPtr[index] = color;
-                            screenBufferDistancePtr[index] = distance;
-                        }
+                        if (distance > screenBufferDistancePtr[index]) continue;
+                        if (IsPointNotInQuad(x, y, p1, p2, p3, p4)) continue;
+
+                        screenBufferColorPtr[index] = color;
+                        screenBufferDistancePtr[index] = distance;
                     }
                 }
         }
@@ -140,31 +139,17 @@ namespace SlimeGame.Models.Shapes
 
             return true;
         }
-        public static bool IsPointInQuad(int x, int y, Point p1, Point p2, Point p3, Point p4)
+        public static bool IsPointNotInQuad(int x, int y, Point p1, Point p2, Point p3, Point p4)
         {
-            float v1x = p1.X - x, v1y = p1.Y - y;
-            float v2x = p2.X - x, v2y = p2.Y - y;
-            float v3x = p3.X - x, v3y = p3.Y - y;
-            float v4x = p4.X - x, v4y = p4.Y - y;
+            int c1 = (p2.X - p1.X) * (y - p1.Y) - (p2.Y - p1.Y) * (x - p1.X);
+            int c2 = (p3.X - p2.X) * (y - p2.Y) - (p3.Y - p2.Y) * (x - p2.X);
+            int c3 = (p4.X - p3.X) * (y - p3.Y) - (p4.Y - p3.Y) * (x - p3.X);
+            int c4 = (p1.X - p4.X) * (y - p4.Y) - (p1.Y - p4.Y) * (x - p4.X);
 
-            bool hasPos = false, hasNeg = false;
+            bool hasNeg = (c1 < 0) || (c2 < 0) || (c3 < 0) || (c4 < 0);
+            bool hasPos = (c1 > 0) || (c2 > 0) || (c3 > 0) || (c4 > 0);
 
-            float c1 = v1x * v2y - v1y * v2x;
-            if (c1 > 0) hasPos = true; else if (c1 < 0) hasNeg = true;
-            if (hasPos && hasNeg) return false;
-
-            float c2 = v2x * v3y - v2y * v3x;
-            if (c2 > 0) hasPos = true; else if (c2 < 0) hasNeg = true;
-            if (hasPos && hasNeg) return false;
-
-            float c3 = v3x * v4y - v3y * v4x;
-            if (c3 > 0) hasPos = true; else if (c3 < 0) hasNeg = true;
-            if (hasPos && hasNeg) return false;
-
-            float c4 = v4x * v1y - v4y * v1x;
-            if (c4 > 0) hasPos = true; else if (c4 < 0) hasNeg = true;
-
-            return !(hasPos && hasNeg);
+            return hasNeg && hasPos;
         }
         public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
         {

@@ -18,7 +18,7 @@ namespace SlimeGame
         }
         public bool checkForReset()
         {
-            if (RunTime > 1)
+            if (RunTime >= 1)
             {
                 FPS = callCount;
                 startTime = DateTime.Now;

@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SlimeGame.Models
 {
-    internal struct Mesh(int[][] Indices, Vector3[] Vertices)
+    internal struct Mesh((int p1, int p2, int p3, int p4)[] Indices, Vector3[] Vertices)
     {
         static Point _screenCenter;
         static Point _CachedscreenSize;
@@ -22,7 +22,6 @@ namespace SlimeGame.Models
         static Point _errorPoint = Point.Zero;
         public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
         {
-
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
             _CachedscreenSize = new Point(screenBuffer.width, screenBuffer.height);
         }
@@ -32,7 +31,7 @@ namespace SlimeGame.Models
             ScaleX = _fov_scale * _screenCenter.X;
             ScaleY = _fov_scale * _screenCenter.Y;
         }
-        public unsafe void Draw(
+        public void Draw(
             ref TextureBuffer screenBuffer,
             Color[] colors,
             Vector3 cameraPosition,
@@ -48,23 +47,27 @@ namespace SlimeGame.Models
                 WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[i], out var Point);
                 Points[i] = Point;
             }
+
             for (int i = 0; i < Indices.Length; i++)
             {
                 var indexes = Indices[i];
-                if (Points[indexes[0]] == _errorPoint)
+                Vector3 p1 = Vertices[indexes.p1];
+                Vector3 p2 = Vertices[indexes.p2];
+                Vector3 p3 = Vertices[indexes.p3];
+                if (Points[indexes.p1] == _errorPoint)
                     continue;
-                if (Points[indexes[1]] == _errorPoint)
+                if (Points[indexes.p2] == _errorPoint)
                     continue;
-                if (Points[indexes[2]] == _errorPoint)
+                if (Points[indexes.p3] == _errorPoint)
                     continue;
-                if (Points[indexes[3]] == _errorPoint)
+                if (Points[indexes.p4] == _errorPoint)
                     continue;
 
-                Vector3 lightDirection = Vertices[indexes[0]] - lightPos;
+                Vector3 lightDirection = p1 - lightPos;
                 lightDirection.Normalize();
 
-                Vector3 side1 = Vertices[indexes[0]] - Vertices[indexes[1]];
-                Vector3 side2 = Vertices[indexes[0]] - Vertices[indexes[2]];
+                Vector3 side1 = p1 - p2;
+                Vector3 side2 = p1 - p3;
                 Vector3 normalDir = Vector3.Cross(side1, side2);
                 normalDir.Normalize();
 
@@ -72,9 +75,9 @@ namespace SlimeGame.Models
                 float dotProduct = Vector3.Dot(-normalDir, lightDirection);
 
                 // mix colors based on the difference in rays
-                Color color = Color.Lerp(colors[i], lightColor, dotProduct/3);
+                Color color = Color.Lerp(colors[i], lightColor, dotProduct / 3);
 
-                int distance = (int)Vector3.Distance(cameraPosition, Vertices[indexes[0]]);
+                int distance = (int)Vector3.Distance(cameraPosition, p1);
                 DrawSquare(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);
                 continue;
             }
@@ -87,17 +90,17 @@ namespace SlimeGame.Models
             float pitch,
             float yaw,
             int distance,
-            int[] indexes,
+            (int p1, int p2, int p3, int p4) indexes,
             Point[] Points
             )
         {
-            Point p1 = Points[indexes[0]];
-            Point p2 = Points[indexes[1]];
-            Point p3 = Points[indexes[2]];
-            Point p4 = Points[indexes[3]];
+            Point p1 = Points[indexes.p1];
+            Point p2 = Points[indexes.p2];
+            Point p3 = Points[indexes.p3];
+            Point p4 = Points[indexes.p4];
 
 
-            /* calculates a bounding rectangle for the triangle */
+            /* calculates a bounding rectangle for the square */
             int xmin = Math.Max(General.min4(p1.X, p2.X, p3.X, p4.X), 0);
             int ymin = Math.Max(General.min4(p1.Y, p2.Y, p3.Y, p4.Y), 0);
             int xmax = Math.Min(General.max4(p1.X, p2.X, p3.X, p4.X), _CachedscreenSize.X);
@@ -116,13 +119,11 @@ namespace SlimeGame.Models
                     for (int x = xmin; x < xmax; x++)
                     {
                         int index = yTimesWidth + x;
+                        if (distance > screenBufferDistancePtr[index]) continue;
+                        if (!IsPointInQuad(x, y, p1, p2, p3, p4)) continue;
 
-                        if (distance <= screenBufferDistancePtr[index] &&
-                            IsPointInQuad(x, y, p1, p2, p3, p4))
-                        {
-                            screenBufferColorPtr[index] = color;
-                            screenBufferDistancePtr[index] = distance;
-                        }
+                        screenBufferColorPtr[index] = color;
+                        screenBufferDistancePtr[index] = distance;
                     }
                 }
         }
@@ -146,31 +147,18 @@ namespace SlimeGame.Models
 
             return true;
         }
+
         public static bool IsPointInQuad(int x, int y, Point p1, Point p2, Point p3, Point p4)
         {
-            float v1x = p1.X - x, v1y = p1.Y - y;
-            float v2x = p2.X - x, v2y = p2.Y - y;
-            float v3x = p3.X - x, v3y = p3.Y - y;
-            float v4x = p4.X - x, v4y = p4.Y - y;
+            int c1 = (p2.X - p1.X) * (y - p1.Y) - (p2.Y - p1.Y) * (x - p1.X);
+            int c2 = (p3.X - p2.X) * (y - p2.Y) - (p3.Y - p2.Y) * (x - p2.X);
+            int c3 = (p4.X - p3.X) * (y - p3.Y) - (p4.Y - p3.Y) * (x - p3.X);
+            int c4 = (p1.X - p4.X) * (y - p4.Y) - (p1.Y - p4.Y) * (x - p4.X);
 
-            bool hasPos = false, hasNeg = false;
+            bool hasNeg = (c1 < 0) || (c2 < 0) || (c3 < 0) || (c4 < 0);
+            bool hasPos = (c1 > 0) || (c2 > 0) || (c3 > 0) || (c4 > 0);
 
-            float c1 = v1x * v2y - v1y * v2x;
-            if (c1 > 0) hasPos = true; else if (c1 < 0) hasNeg = true;
-            if (hasPos && hasNeg) return false;
-
-            float c2 = v2x * v3y - v2y * v3x;
-            if (c2 > 0) hasPos = true; else if (c2 < 0) hasNeg = true;
-            if (hasPos && hasNeg) return false;
-
-            float c3 = v3x * v4y - v3y * v4x;
-            if (c3 > 0) hasPos = true; else if (c3 < 0) hasNeg = true;
-            if (hasPos && hasNeg) return false;
-
-            float c4 = v4x * v1y - v4y * v1x;
-            if (c4 > 0) hasPos = true; else if (c4 < 0) hasNeg = true;
-
-            return !(hasPos && hasNeg);
+            return !(hasNeg && hasPos);
         }
     }
 }

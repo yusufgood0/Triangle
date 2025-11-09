@@ -251,7 +251,7 @@ namespace SlimeGame
                 Point newMousePos = _mouseState.Position + controllerOffset.ToPoint();
                 Mouse.SetPosition(newMousePos.X, newMousePos.Y);
             }
-            
+
 
             if (Playing)
             {
@@ -488,7 +488,7 @@ namespace SlimeGame
             int endIndexX = Math.Min(_seedMapper.width - 1, playerTileIndex.X + renderDistance);
             int endIndexY = Math.Min(_seedMapper.height - 1, playerTileIndex.Y + renderDistance);
             Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
-            List<int[]> meshIndeces = new();
+            List<(int, int, int, int)> meshIndeces = new();
             List<Color> meshColors = new();
             Mesh TargetMesh;
 
@@ -516,12 +516,12 @@ namespace SlimeGame
                     int xPlus1 = x + 1;
 
                     meshIndeces.Add(
-                        new int[] {
+                            (
                             index,
                             index + 1,
                             index + 1 + _seedMapper.width,
                             index + _seedMapper.width
-                            }
+                            )
                         );
                     meshColors.Add(
                         Colors[valueMap[x, y]]
