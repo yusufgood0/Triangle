@@ -16,11 +16,13 @@ namespace SlimeGame.Models
         BoundingBox GenericModel.BoundingBox => new(Center - new Vector3(Radius), Center + new Vector3(Radius));
         Shape[] GenericModel.Shapes => GetTriangles;
         Color GenericModel.Color { get => Color; set => Color = value; }
+        Vector3 GenericModel.Position { get => Center; set => Center = value; }
         public Color Color { get; set; }
         List<(int, int, int)> Triangles;
         List<Vector3> Vertices;
         public Vector3 Center { get; private set; }
         public float Radius { get; private set; }
+        public Vector2 _rotation;
         public Sphere(Sphere Sphere)
         {
             Triangles = new(Sphere.Triangles);
@@ -123,6 +125,24 @@ namespace SlimeGame.Models
                 int next = (i + 1) % columns;
                 Triangles.Add((bottomVertexIndex, lastRowStart + next, lastRowStart + i));
             }
+        }
+        public Vector3 Rotation(Vector3 vector, Vector3 pivotPoint, Vector2 rotation)
+            => General.RotateVector(vector - pivotPoint, rotation.X, rotation.Y) + pivotPoint;
+        public void SetRotation(Vector3 pivot, Vector2 rotation)
+        {
+            foreach (var vertexIndex in Enumerable.Range(0, Vertices.Count))
+            {
+                Vertices[vertexIndex] = Rotation(Vertices[vertexIndex], pivot, rotation - _rotation);
+            }
+            _rotation = rotation;
+        }
+        public void ChangeRotation(Vector3 pivot, Vector2 rotation)
+        {
+            foreach (var vertexIndex in Enumerable.Range(0, Vertices.Count))
+            {
+                Vertices[vertexIndex] = Rotation(Vertices[vertexIndex], pivot, rotation);
+            }
+            _rotation += rotation;
         }
         public Shape[] GetTriangles
         {

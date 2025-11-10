@@ -59,7 +59,6 @@ namespace SlimeGame
         private bool Playing => _currentGameState == gamestates.Playing;
         private bool Paused => _currentGameState == gamestates.Paused;
         private bool SettingsMenu => _currentGameState == gamestates.SettingsMenu;
-
         private enum gamestates
         {
             Playing,
@@ -99,15 +98,15 @@ namespace SlimeGame
             // */
 
 
-            /* randomly places many orbs around for testing 
-            for (int i = 0; i < 1250; i++)
+            /* randomly places many orbs around for testing */
+            for (int i = 0; i < 500; i++)
             {
                 int quality = rnd.Next(5, 10);
-                Models.Add(new Sphere(new Vector3(rnd.Next(-1000, 1000), rnd.Next(-1000, 1000), rnd.Next(-1000, 1000)), quality * 5, quality));
+                _models.Add(new Sphere(new Vector3(rnd.Next(-1000, 1000), rnd.Next(-1000, 1000), rnd.Next(-1000, 1000)), quality * 5, quality, Color.Green));
             }
             // */
 
-            /* randomly places many cubes around for testing  */
+            /* randomly places many cubes around for testing  
             int size = 400;
             for (int x = 0; x < 5; x++)
             {
@@ -115,11 +114,14 @@ namespace SlimeGame
                 {
                     for (int z = 0; z < 5; z++)
                     {
-                        _models.Add(new Cube(new Vector3(size * x * 2, size * y * -2, size * z * 2), size, size, size));
+                        Vector3 pos = new Vector3(size * x * 2, size * y * -2, size * z * 2);
+                        _models.Add(new Cube(pos, size, size, size));
+                        //_models[^1].SetRotation(pos, MathHelper.PiOver4, MathHelper.PiOver4);
                     }
                 }
             }
             // */
+
 
             /* Spawns a Cube at the origin point with a height width and depth of 100 
             Cubes.Add(new Cube(new Vector3(100, 0, 0), 100, 100, 100));
@@ -156,7 +158,7 @@ namespace SlimeGame
             _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters, defaultButtonColor);
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
-
+            
 
             /* Load Map */
             Random rnd = new Random();
@@ -205,9 +207,9 @@ namespace SlimeGame
                 );
 
 
-            Enemies.Add(new Slime(PlayerPos));
-            Enemies.Add(new Slime(PlayerPos));
-            Enemies.Add(new Slime(PlayerPos));
+            Enemies.Add(new Archer(PlayerPos));
+            Enemies.Add(new Archer(PlayerPos));
+            Enemies.Add(new Archer(PlayerPos));
 
             /* Initilize player object */
             _player = new Player(
@@ -230,6 +232,11 @@ namespace SlimeGame
             _previousIsMouseVisible = IsMouseVisible;
             _masterInput.UpdateStates();
             IsMouseVisible = !Playing || !IsActive;
+
+            foreach (var modelIndex in Enumerable.Range(0, _models.Count))
+            {
+                _models[modelIndex].ChangeRotation(Vector3.Zero, 0.001f, 0.001f);
+            }
 
             if (_masterInput.OnPress(KeybindActions.GamePadClick))
             {
@@ -288,7 +295,7 @@ namespace SlimeGame
                 for (int i = 0; i < Enemies.Count; i++)
                 {
                     var BoundingBox = new BoundingBox[] { };
-                    Enemies[i].Update(in _player, in rnd, ref BoundingBox, _seedMapper, MapCellSize);
+                    Enemies[i].Update(in _player, in _projectiles, in rnd, _seedMapper, MapCellSize);
                     if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 20000 * 20000)
                     {
                         Enemies.RemoveAt(i);
@@ -576,7 +583,7 @@ namespace SlimeGame
             lightSource = _crystalBall.Position;
 
             /* Moves Colors on the CrystalBall */
-            _crystalBall.UpdateHighlights(_spellbook);
+            _crystalBall.UpdateHighlights(_spellbook, _player);
 
             /* Draw Shapes */
             for (int i = 0; i < visibleShapes.Count; i++)

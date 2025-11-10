@@ -13,7 +13,7 @@ namespace SlimeGame.Enemies
 {
     internal class Slime : Enemy
     {
-        void Enemy.Update(in Player player, in Random rnd, ref BoundingBox[] collisionObject, SeedMapper seedMap, int MapCellSize)
+        void Enemy.Update(in Player player, in List<Projectile> projectiles, in Random rnd, SeedMapper seedMap, int MapCellSize)
         {
             CheckHeal(in rnd);
             double TimeSinceLastJump = this.TimeSinceLastJump;
@@ -31,7 +31,7 @@ namespace SlimeGame.Enemies
                 _speed.Y = Math.Min(0, _speed.Y);
                 onGround = true;
             }
-            
+
             if (onGround)
             {
                 if (JumpCooldown - TimeSinceLastJump < 1)
@@ -39,20 +39,7 @@ namespace SlimeGame.Enemies
                     _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(SquishFactorDown - _squish), 0.7f) * 0.5f, SquishFactorDown);
                     if (_squish <= SquishFactorDown)
                     {
-                        //if (Vector3.DistanceSquared(_position, player.Position) > 40*40)
-                        //{
-                            JumpAtPlayer(player.Position);
-                        //}
-                        //else if (_jumpPattern == JumpPatternLength)
-                        //{
-                        //    JumpAtPlayer(player.Position, JumpMax, JumpStrength);
-                        //    _jumpPattern = 0;
-                        //}
-                        //else
-                        //{
-                        //    _jumpPattern++;
-                        //    JumpAtPlayer(player.Position, rnd.Next(JumpMin, JumpMax), JumpStrength);
-                        //}
+                        JumpAtPlayer(player.Position);
                         onGround = false;
                         JumpTimer = DateTime.Now;
                     }
@@ -94,7 +81,6 @@ namespace SlimeGame.Enemies
         private const int JumpStrength = 35;
         private const int JumpMin = 50;
         private const int JumpMax = 150;
-        private const int JumpPatternLength = 2;
         private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
         private const int Size = 250;
         private const int Damage = 20;
@@ -114,7 +100,6 @@ namespace SlimeGame.Enemies
         private float _squish = SquishFactorNormal;
         private double TimeSinceLastJump => (DateTime.Now - JumpTimer).TotalSeconds;
         private int _health;
-        private int _jumpPattern = 0;
         private BoundingBox _hitbox;
         private DateTime HealTimer = DateTime.Now;
         private DateTime JumpTimer = DateTime.Now;

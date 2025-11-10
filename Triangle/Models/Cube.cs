@@ -9,7 +9,7 @@ namespace SlimeGame.Models
     {
         BoundingBox GenericModel.BoundingBox => new(Position, BRB);
         Shape[] GenericModel.Shapes => CreateSquares();
-        Color GenericModel.Color { get => Color; set => Color = value; }
+        Color GenericModel.Color { get => _color; set => _color = value; }
         static (int, int, int)[] Triangles = new (int, int, int)[]
             {
                 (0, 1, 2), (1, 3, 2), // Front
@@ -33,27 +33,32 @@ namespace SlimeGame.Models
          * TLB, TRB, BLB, BRB
          */
         public Shape[] _cachedSquares = null;
-        float xSize;
-        float ySize;
-        float zSize;
-        Color Color;
+        float _xSize;
+        float _ySize;
+        float _zSize;
+        Color _color;
+        Vector2 _rotation;
+        Vector3 _pivotPoint;
 
         public Vector3 TLF;
         public Vector3 Position { get => TLF; set => TLF = value; }
-        public Vector3 TRF => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z);
-        public Vector3 BLF => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z);
-        public Vector3 BRF => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z);
-        public Vector3 TLB => new Vector3(TLF.X, TLF.Y, TLF.Z + zSize);
-        public Vector3 TRB => new Vector3(TLF.X + xSize, TLF.Y, TLF.Z + zSize);
-        public Vector3 BLB => new Vector3(TLF.X, TLF.Y + ySize, TLF.Z + zSize);
-        public Vector3 BRB => new Vector3(TLF.X + xSize, TLF.Y + ySize, TLF.Z + zSize);
-        public Cube(Vector3 TLF, float xSize, float ySize, float zSize, Color color = new())
+        public Vector3 TRF => new Vector3(TLF.X + _xSize, TLF.Y, TLF.Z);
+        public Vector3 BLF => new Vector3(TLF.X, TLF.Y + _ySize, TLF.Z);
+        public Vector3 BRF => new Vector3(TLF.X + _xSize, TLF.Y + _ySize, TLF.Z);
+        public Vector3 TLB => new Vector3(TLF.X, TLF.Y, TLF.Z + _zSize);
+        public Vector3 TRB => new Vector3(TLF.X + _xSize, TLF.Y, TLF.Z + _zSize);
+        public Vector3 BLB => new Vector3(TLF.X, TLF.Y + _ySize, TLF.Z + _zSize);
+        public Vector3 BRB => new Vector3(TLF.X + _xSize, TLF.Y + _ySize, TLF.Z + _zSize);
+        public Vector3 Rotation(Vector3 vector)
+            => General.RotateVector(vector - _pivotPoint, _rotation.X, _rotation.Y) + _pivotPoint;
+        public Cube(Vector3 TLF, float xSize, float ySize, float zSize, Color color = new(), Vector2 rotation = new Vector2())
         {
-            this.TLF = TLF;
-            this.xSize = xSize;
-            this.ySize = ySize;
-            this.zSize = zSize;
-            Color = color;
+            this.Position = TLF;
+            this._xSize = xSize;
+            this._ySize = ySize;
+            this._zSize = zSize;
+            this._color = color;
+            this._rotation = rotation == new Vector2() ? Vector2.Zero: rotation;
         }
         public Shape[] GetTriangles
         {
@@ -62,23 +67,24 @@ namespace SlimeGame.Models
                     TLF, TRF, BLF, BRF,
                     TLB, TRB, BLB, BRB
                 },
-                Color);
+                _color);
         }
         public Vector3 Center
         {
-            get => new Vector3(Position.X + xSize / 2, Position.Y + ySize / 2, Position.Z + zSize / 2);
+            get => new Vector3(Position.X + _xSize / 2, Position.Y + _ySize / 2, Position.Z + _zSize / 2);
         }
         public Vector3 Opposite
         {
-            get => new Vector3(Position.X + xSize, Position.Y + ySize, Position.Z + zSize);
+            get => new Vector3(Position.X + _xSize, Position.Y + _ySize, Position.Z + _zSize);
         }
         public Cube(Cube Cube)
         {
             TLF = Cube.TLF;
-            xSize = Cube.xSize;
-            ySize = Cube.ySize;
-            zSize = Cube.zSize;
-            Color = Cube.Color;
+            _xSize = Cube._xSize;
+            _ySize = Cube._ySize;
+            _zSize = Cube._zSize;
+            _color = Cube._color;
+            _rotation = Cube._rotation;
         }
         public GenericModel Move(Vector3 offset)
         {
@@ -105,16 +111,40 @@ namespace SlimeGame.Models
                     pitch,
                     yaw,
                     distance,
-                    Color
+                    _color
                 );
             }
         }
+        public void SetRotation(Vector3 pivot, Vector2 rotation)
+        {
+            _rotation = rotation;
+            _pivotPoint = pivot;
+            RecreateSquares();
+        }
+        public void ChangeRotation(Vector3 pivot, Vector2 rotation)
+        {
+            _rotation = _rotation + rotation;
+            _pivotPoint = pivot;
+            RecreateSquares();
+        }
+        public void RecreateSquares()
+        {
+            DiscardSquares();
+            CreateSquares();
+        }
         public Shape[] CreateSquares()
         {
-
             if (_cachedSquares == null)
             {
-                Vector3[] _vertices = new Vector3[]
+                Vector3[] _vertices;
+                if (_rotation != Vector2.Zero)
+                    _vertices = new Vector3[]
+                    {
+                        Rotation(TLF), Rotation(TRF), Rotation(BLF), Rotation(BRF),
+                        Rotation(TLB), Rotation(TRB), Rotation(BLB), Rotation(BRB)
+                    };
+                else
+                    _vertices = new Vector3[]
                     {
                         TLF, TRF, BLF, BRF,
                         TLB, TRB, BLB, BRB
@@ -127,7 +157,7 @@ namespace SlimeGame.Models
                         _vertices[Squares[i].b],
                         _vertices[Squares[i].c],
                         _vertices[Squares[i].d],
-                        Color
+                        _color
                     );
                 }
             }

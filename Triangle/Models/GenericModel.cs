@@ -13,12 +13,33 @@ namespace SlimeGame.Models
 {
     internal interface GenericModel
     {
-        Shape[] Shapes { get; }
-        BoundingBox BoundingBox { get; }
-        Color Color { get; set; }
+        public Shape[] Shapes { get; }
+        public BoundingBox BoundingBox { get; }
+        public Color Color { get; set; }
+        public Vector3 Position { get; set; }
         public GenericModel Move(Vector3 offset)
         {
             return null;
+        }
+        public void SetRotation(Vector3 pivot, float yaw, float pitch)
+            => SetRotation(pivot, new Vector2(yaw, pitch));
+        public void SetRotation(float yaw, float pitch)
+            => SetRotation(Position, new Vector2(yaw, pitch));
+        public void SetRotation(Vector2 rotation)
+            => SetRotation(Position, rotation);
+        public void SetRotation(Vector3 pivot, Vector2 rotation)
+        {
+            Debug.WriteLine("GenericModel.SetRotation called - no implementation: " + this.GetType());
+        }
+        public void ChangeRotation(Vector3 pivot, float yaw, float pitch)
+            => ChangeRotation(pivot, new Vector2(yaw, pitch));
+        public void ChangeRotation(float yaw, float pitch)
+            => ChangeRotation(Position, new Vector2(yaw, pitch));
+        public void ChangeRotation(Vector2 rotation)
+            => ChangeRotation(Position, rotation);
+        public void ChangeRotation(Vector3 pivot, Vector2 rotation)
+        {
+            Debug.WriteLine("GenericModel.ChangeRotation called - no implementation: " + this.GetType());
         }
     }
 }

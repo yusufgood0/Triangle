@@ -23,17 +23,21 @@ namespace SlimeGame.GameAsset
         static GenericModel _model = new Sphere(Vector3.Zero, 30, SphereQuality, Color.White);
         Vector3 _position;
         Vector3[] _highlights = new Vector3[3];
-        int _swirlPos = 0;
+        int _swirlPos = 1;
         int _swirlSpeed = 1;
+        float _rotation;
 
         public void SetPosition(Player player)
         {
             Quaternion rotation = Quaternion.CreateFromYawPitchRoll(player.Angle.X, -player.Angle.Y, 0);
             _position = Vector3.Transform(orbOffset, rotation) + player.EyePos;
         }
-        public void UpdateHighlights(SpellBook spellbook)
+        public void UpdateHighlights(SpellBook spellbook, Player player)
         {
-            _swirlPos = (_swirlPos + _swirlSpeed) % (SphereQuality * 3);
+            _rotation += 0.1f;
+            _rotation %= MathF.Tau;
+            _model.SetRotation(-player.Angle.X - _rotation, 0);
+            //_swirlPos = (_swirlPos + _swirlSpeed) % (SphereQuality * 3);
 
             /* Slowly changes colorValue to target value */
             int target = 200 - spellbook.ElementsCount * 45;

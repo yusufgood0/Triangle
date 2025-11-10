@@ -13,11 +13,11 @@ namespace SlimeGame.Enemies
 {
     internal class Archer : Enemy
     {
-        void Enemy.Update(in Player player, in Random rnd, ref BoundingBox[] collisionObject, SeedMapper seedMap, int MapCellSize)
+        void Enemy.Update(in Player player, in List<Projectile> projectiles, in Random rnd, SeedMapper seedMap, int MapCellSize)
         {
             double TimeSinceLastJump = this.TimeSinceLastJump;
 
-            _speed.Y += 1.5f;
+            _speed.Y += 0.4f;
             _speed.X *= 0.975f;
             _speed.Z *= 0.975f;
             _speed.Y *= 0.99f;
@@ -30,9 +30,11 @@ namespace SlimeGame.Enemies
                 _speed.Y = Math.Min(0, _speed.Y);
                 onGround = true;
             }
-            if (FlapCooldown - TimeSinceLastJump < 3)
+            if (TimeSinceLastJump > FlapCooldown)
             {
                 FlapAtPlayer(player.Position, rnd);
+                JumpTimer = DateTime.Now.AddSeconds(-rnd.NextDouble());
+
             }
 
             FormModel(TimeSinceLastJump);
@@ -73,7 +75,7 @@ namespace SlimeGame.Enemies
         private const int MaxHealth = 125;
         private const int minHeal = 1;
         private const int maxHeal = 5;
-        private const float FlapCooldown = 2;
+        private const float FlapCooldown = 1;
         private const float SquishFactorUp = 200;
         private const float SquishFactorDown = -100;
         private const float SquishFactorNormal = 50;
@@ -94,7 +96,7 @@ namespace SlimeGame.Enemies
 
         private void FormModel(double TimeSinceLastJump)
         {
-            float height = Size + _squish;
+            float height = Size;
             var newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size, Color.LightYellow);
             _model[0] = newCube;
             _hitbox = new BoundingBox(newCube.Position, newCube.Opposite);
@@ -102,10 +104,11 @@ namespace SlimeGame.Enemies
         private void FlapAtPlayer(Vector3 playerPos, in Random rnd)
         {
             Vector3 dir = playerPos - _position;
-
-            _speed.Z += Math.Clamp(dir.Z * 0.05f, -10, 10);
-            _speed.X += Math.Clamp(dir.X * 0.05f, -10, 10);
-            _speed.Y += rnd.Next(-10, -30);
+            dir.Z += rnd.Next(-1800, 1800);
+            dir.X += rnd.Next(-1800, 1800);
+            _speed.Z += Math.Clamp(dir.Z * 0.05f, -20, 20);
+            _speed.X += Math.Clamp(dir.X * 0.05f, -20, 20);
+            _speed.Y -= rnd.Next(15, 40) - dir.Y * 0.01f;
         }
         public Archer(Vector3 position)
         {

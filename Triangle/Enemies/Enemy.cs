@@ -13,7 +13,7 @@ namespace SlimeGame.Enemies
 {
     internal interface Enemy
     {
-        public void Update(in Player player, in Random rnd, ref BoundingBox[] collisionObject, SeedMapper seedMap, int MapCellSize);
+        public void Update(in Player player, in List<Projectile> projectiles, in Random rnd, SeedMapper seedMap, int MapCellSize);
         public void Knockback(Vector3 position);
         public void EnemyHitPlayer(ref Player player);
         public void EnemyIsHit(ref Player player, Vector3 source, int amount);

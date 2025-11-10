@@ -49,7 +49,7 @@ namespace SlimeGame.GameAsset
         Color Projectile.Color => _model.Color;
         
         const int Damage = 25;
-        const int ModelDetail = 5;
+        const int ModelDetail = 3;
         const int Radius = 160;
         const int ExplosionSize = 100;
         const float HitboxSizeMultiplier = 1.5f;
@@ -64,12 +64,12 @@ namespace SlimeGame.GameAsset
             _velocity *= 1.05f;
             _position += _velocity;
             ReformHitbox();
+            _model.ChangeRotation(0.1f, 0.2f);
             if (seedMapper.HeightAtPosition(_position, MapCellSize) < _position.Y)
             {
                 return true;
             }
             return false;
-            
         }
         public void ReformHitbox()
         {
@@ -94,7 +94,6 @@ namespace SlimeGame.GameAsset
                 returnValue[i].Float(200);
             }
             return returnValue;
-
         }
     }
 }
