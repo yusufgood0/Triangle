@@ -32,7 +32,7 @@ namespace SlimeGame.GameAsset
             Array.Fill(_pixels, color);
             Array.Fill(_distance, int.MaxValue);
         }
-        public unsafe void applyDepth(int strength)
+        public unsafe void applyDepth(float strength)
         {
             fixed (Color* screenBufferColorPtr = _pixels)
             fixed (int* screenBufferDistancePtr = _distance)
