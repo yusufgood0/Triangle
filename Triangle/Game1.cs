@@ -471,7 +471,7 @@ namespace SlimeGame
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = new Vector3[_seedMapper.height * _seedMapper.width];
             var valueMap = _seedMapper.Values;
-            var Colors = new Color[] { Color.DarkSlateBlue, Color.DarkGreen * 1.2f };
+            var Colors = new Color[] { Color.DarkSeaGreen, Color.Black};
 
             for (int y = 0; y < _seedMapper.height; y++)
             {
@@ -604,7 +604,7 @@ namespace SlimeGame
             }
 
             /* FPS Counter */
-            if (framesPerSecondTimer.update())
+            if (framesPerSecondTimer.Update())
             {
                 /* Runs Every second */
                 Debug.WriteLine("DrawTime: " + (DateTime.Now - startTime).Milliseconds);
@@ -633,7 +633,7 @@ namespace SlimeGame
 
             // Cleanup after drawing
             screenTextureBuffer.Dispose();
-            _screenBuffer.Clear(Color.DarkSlateBlue);
+            _screenBuffer.Clear(Color.Black);
 
             base.Draw(gameTime);
         }

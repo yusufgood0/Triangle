@@ -12,11 +12,11 @@ namespace SlimeGame
         DateTime startTime;
         int callCount;
         public int FPS = 0;
-        public void callTimer()
+        public void CallTimer()
         {
             callCount++;
         }
-        public bool checkForReset()
+        public bool CheckForReset()
         {
             if (RunTime >= 1)
             {
@@ -27,10 +27,10 @@ namespace SlimeGame
             }
             return false;
         }
-        public bool update()
+        public bool Update()
         {
-            callTimer();
-            return checkForReset();
+            CallTimer();
+            return CheckForReset();
         }
 
         double RunTime { get => (DateTime.Now - startTime).TotalSeconds; }
