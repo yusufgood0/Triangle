@@ -98,15 +98,15 @@ namespace SlimeGame
             // */
 
 
-            /* randomly places many orbs around for testing */
+            /* randomly places many orbs around for testing 
             for (int i = 0; i < 500; i++)
             {
                 int quality = rnd.Next(5, 10);
-                _models.Add(new Sphere(new Vector3(rnd.Next(-1000, 1000), rnd.Next(-1000, 1000), rnd.Next(-1000, 1000)), quality * 5, quality, Color.Green));
+                _models.Add(new Sphere(new Vector3(rnd.Next(-10000, 10000), rnd.Next(-10000, 10000), rnd.Next(-10000, 10000)), quality * 50, quality, Color.Green));
             }
             // */
 
-            /* randomly places many cubes around for testing  
+            /* randomly places many cubes around for testing */ 
             int size = 400;
             for (int x = 0; x < 5; x++)
             {
@@ -137,9 +137,9 @@ namespace SlimeGame
             _spriteFont = Content.Load<SpriteFont>("GameFont");
             _gradiantSquare = Content.Load<Texture2D>("GradiantSquare");
 
-            Triangle.Initialize(_spriteBatch, _screenBuffer);
-            Square.Initialize(_spriteBatch, _screenBuffer);
-            Mesh.Initialize(_spriteBatch, _screenBuffer);
+            Triangle.Initialize(_screenBuffer);
+            Square.Initialize(_screenBuffer);
+            Mesh.Initialize(_screenBuffer);
             Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
             lightSource = new(MapCenter.X, -1000, MapCenter.Y);
             if (FillScreen)
@@ -214,7 +214,7 @@ namespace SlimeGame
             /* Initilize player object */
             _player = new Player(
                 PlayerPos,
-                new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 5000, FOV * 1.2f) //bloats FOV to ensure no clipping on camera
+                new Camera(screenSize.Y / screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 15000, FOV * 1.2f) //bloats FOV to ensure no clipping on camera
                 );
 
 
@@ -235,7 +235,7 @@ namespace SlimeGame
 
             foreach (var modelIndex in Enumerable.Range(0, _models.Count))
             {
-                _models[modelIndex].ChangeRotation(Vector3.Zero, 0.001f, 0.001f);
+                _models[modelIndex].ChangeRotation(0.01f, 1f);
             }
 
             if (_masterInput.OnPress(KeybindActions.GamePadClick))
@@ -294,7 +294,6 @@ namespace SlimeGame
                 }
                 for (int i = 0; i < Enemies.Count; i++)
                 {
-                    var BoundingBox = new BoundingBox[] { };
                     Enemies[i].Update(in _player, in _projectiles, in rnd, _seedMapper, MapCellSize);
                     if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 20000 * 20000)
                     {
@@ -469,7 +468,6 @@ namespace SlimeGame
             DateTime startTime = DateTime.Now;
 
             List<Shape> visibleShapes = new();
-            List<Color> ShapesColors = new();
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = new Vector3[_seedMapper.height * _seedMapper.width];
             var valueMap = _seedMapper.Values;
@@ -494,7 +492,6 @@ namespace SlimeGame
             int startIndexY = Math.Max(0, playerTileIndex.Y - renderDistance);
             int endIndexX = Math.Min(_seedMapper.width - 1, playerTileIndex.X + renderDistance);
             int endIndexY = Math.Min(_seedMapper.height - 1, playerTileIndex.Y + renderDistance);
-            Rectangle screenRect = new Rectangle(Point.Zero, screenSize);
             List<(int, int, int, int)> meshIndeces = new();
             List<Color> meshColors = new();
             Mesh TargetMesh;
@@ -518,9 +515,6 @@ namespace SlimeGame
                     {
                         continue;
                     }
-
-                    int yPlus1 = y + 1;
-                    int xPlus1 = x + 1;
 
                     meshIndeces.Add(
                             (
@@ -620,8 +614,9 @@ namespace SlimeGame
             GraphicsDevice.Clear(Color.Black);
 
             // Prepare screen texture
-            _screenBuffer.applyDepth(800);
+            _screenBuffer.applyDepth(1200);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
+            
 
             // Draw to screen
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);

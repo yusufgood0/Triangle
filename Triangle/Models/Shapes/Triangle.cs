@@ -37,16 +37,12 @@ namespace SlimeGame.Models.Shapes
         static float _fov_scale;
         static Point _screenCenter;
         static Point _CachedscreenSize;
-        static Texture2D _texture;
-        static Color[] _pixelBuffer;
         static float ScaleX;
         static float ScaleY;
-        public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
+        public static void Initialize(TextureBuffer screenBuffer) // call once per frame
         {
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
             _CachedscreenSize = new Point(screenBuffer.width, screenBuffer.height);
-            _texture = new Texture2D(spritebatch.GraphicsDevice, 1, 1);
-            _texture.SetData(new Color[1] { Color.White });
         }
         public static void UpdateConstants(float FOV) // call once per frame
         {

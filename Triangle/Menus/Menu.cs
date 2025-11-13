@@ -51,7 +51,7 @@ namespace SlimeGame.Menus
 
             foreach (var button in _menuButtons)
             {
-                button.Draw(spriteBatch, _renderTarget, rectTexture, font, textColor, GetVirtualPosition(mouseState).ToPoint());
+                button.Draw(spriteBatch, rectTexture, font, textColor, GetVirtualPosition(mouseState).ToPoint());
             }
             spriteBatch.GraphicsDevice.SetRenderTarget(null);
 

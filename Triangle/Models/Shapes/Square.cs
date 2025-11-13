@@ -35,7 +35,7 @@ namespace SlimeGame.Models.Shapes
         static float _fov_scale;
         static float ScaleX;
         static float ScaleY;
-        public static void Initialize(SpriteBatch spritebatch, TextureBuffer screenBuffer) // call once per frame
+        public static void Initialize(TextureBuffer screenBuffer) // call once per frame
         {
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
             _CachedscreenSize = new Point(screenBuffer.width, screenBuffer.height);

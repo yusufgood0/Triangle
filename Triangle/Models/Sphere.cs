@@ -17,15 +17,16 @@ namespace SlimeGame.Models
         Shape[] GenericModel.Shapes => GetTriangles;
         Color GenericModel.Color { get => Color; set => Color = value; }
         Vector3 GenericModel.Position { get => Center; set => Center = value; }
-        public Color Color { get; set; }
-        List<(int, int, int)> Triangles;
+
+        Color Color;
+        List<(int, int, int)> TriangleIndeces;
         List<Vector3> Vertices;
-        public Vector3 Center { get; private set; }
-        public float Radius { get; private set; }
-        public Vector2 _rotation;
+        Vector3 Center;
+        float Radius;
+        Vector2 _rotation;
         public Sphere(Sphere Sphere)
         {
-            Triangles = new(Sphere.Triangles);
+            TriangleIndeces = new(Sphere.TriangleIndeces);
             Vertices = new(Sphere.Vertices);
             Center = Sphere.Center;
             Radius = Sphere.Radius;
@@ -83,13 +84,13 @@ namespace SlimeGame.Models
             int bottomVertexIndex = Vertices.Count - 1;
 
             // Create triangles List
-            Triangles = new List<(int, int, int)>();
+            TriangleIndeces = new List<(int, int, int)>();
 
             // Top cap triangles (connect to north pole)
             for (int i = 0; i < columns; i++)
             {
                 int next = (i + 1) % columns;
-                Triangles.Add((0, i + 1, next + 1));
+                TriangleIndeces.Add((0, i + 1, next + 1));
             }
 
             // Middle rows triangles
@@ -103,14 +104,14 @@ namespace SlimeGame.Models
                     int nextCol = (col + 1) % columns;
 
                     // First triangle of quad
-                    Triangles.Add((
+                    TriangleIndeces.Add((
                         rowStart + nextCol,
                         rowStart + col,
                         nextRowStart + col
                     ));
 
                     // Second triangle of quad
-                    Triangles.Add((
+                    TriangleIndeces.Add((
                         nextRowStart + nextCol,
                         rowStart + nextCol,
                         nextRowStart + col
@@ -123,7 +124,7 @@ namespace SlimeGame.Models
             for (int i = 0; i < columns; i++)
             {
                 int next = (i + 1) % columns;
-                Triangles.Add((bottomVertexIndex, lastRowStart + next, lastRowStart + i));
+                TriangleIndeces.Add((bottomVertexIndex, lastRowStart + next, lastRowStart + i));
             }
         }
         public Vector3 Rotation(Vector3 vector, Vector3 pivotPoint, Vector2 rotation)
@@ -134,6 +135,7 @@ namespace SlimeGame.Models
             {
                 Vertices[vertexIndex] = Rotation(Vertices[vertexIndex], pivot, rotation - _rotation);
             }
+                Center = Rotation(Center, pivot, rotation - _rotation);
             _rotation = rotation;
         }
         public void ChangeRotation(Vector3 pivot, Vector2 rotation)
@@ -142,11 +144,12 @@ namespace SlimeGame.Models
             {
                 Vertices[vertexIndex] = Rotation(Vertices[vertexIndex], pivot, rotation);
             }
+            Center = Rotation(Center, pivot, rotation);
             _rotation += rotation;
         }
         public Shape[] GetTriangles
         {
-            get => Triangle.ModelConstructor(Triangles.ToArray(), Vertices.ToArray(), Color);
+            get => Triangle.ModelConstructor([.. TriangleIndeces], [.. Vertices], Color);
         }
         public void drawVerticies(
             SpriteBatch spriteBatch,
@@ -163,22 +166,22 @@ namespace SlimeGame.Models
         {
             for (int i = 0; i < Vertices.Count; i++)
             {
-                    Debug.WriteLine($"Drawing vertex {i}/{Vertices.Count}");
+                Debug.WriteLine($"Drawing vertex {i}/{Vertices.Count}");
 
-                    General.DrawObject(
-                        spriteBatch,
-                        texture,
-                        screenSize,
-                        FOV,
-                        cameraPosition,
-                        pitch,
-                        yaw,
-                        width,
-                        height,
-                        sourceRect,
-                        color,
-                        Vertices[i]);
-                
+                General.DrawObject(
+                    spriteBatch,
+                    texture,
+                    screenSize,
+                    FOV,
+                    cameraPosition,
+                    pitch,
+                    yaw,
+                    width,
+                    height,
+                    sourceRect,
+                    color,
+                    Vertices[i]);
+
             }
         }
     }

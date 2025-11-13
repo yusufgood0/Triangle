@@ -51,7 +51,7 @@ namespace SlimeGame.Menus
             ButtonColor = buttonColor;
         }
 
-        public void Draw(SpriteBatch spriteBatch, RenderTarget2D renderTarget2D, Texture2D rectTexture, SpriteFont font, Color textColor, Point mousePos)
+        public void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Color textColor, Point mousePos)
         {
             Color buttonColor = ButtonColor;
 

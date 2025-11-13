@@ -37,7 +37,7 @@ namespace SlimeGame.Enemies
 
             }
 
-            FormModel(TimeSinceLastJump);
+            FormModel(General.AngleBetween(player.Position, _position));
 
         }
         void Enemy.Knockback(Vector3 position)
@@ -94,11 +94,13 @@ namespace SlimeGame.Enemies
         private DateTime JumpTimer = DateTime.Now;
 
 
-        private void FormModel(double TimeSinceLastJump)
+        private void FormModel(Vector2 rotation)
         {
             float height = Size;
             var newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size, Color.LightYellow);
             _model[0] = newCube;
+            _model[0].SetRotation(rotation);
+
             _hitbox = new BoundingBox(newCube.Position, newCube.Opposite);
         }
         private void FlapAtPlayer(Vector3 playerPos, in Random rnd)
@@ -115,7 +117,7 @@ namespace SlimeGame.Enemies
             _position = position;
             _speed = Vector3.Down * 25;
             _health = MaxHealth;
-            FormModel(0);
+            FormModel(Vector2.Zero);
         }
 
     }

@@ -173,6 +173,34 @@ namespace SlimeGame
 
             return Vector;
         }
+        public static Vector2 AngleBetween(Vector3 from, Vector3 to)
+        {
+            // Normalize
+            from.Normalize();
+            to.Normalize();
+
+            // --- YAW DIFFERENCE (around Y axis) ---
+            // Project vectors onto XZ plane
+            Vector3 fromYaw = new Vector3(from.X, 0f, from.Z);
+            Vector3 toYaw = new Vector3(to.X, 0f, to.Z);
+
+            fromYaw.Normalize();
+            toYaw.Normalize();
+
+            float yaw = (float)Math.Atan2(
+                toYaw.X * fromYaw.Z - toYaw.Z * fromYaw.X,   // cross (Y sign)
+                Vector3.Dot(fromYaw, toYaw)                  // dot
+            );
+
+            // --- PITCH DIFFERENCE (around X axis) ---
+            // Pitch is based on vertical angle between vectors
+            float pitchFrom = (float)Math.Asin(from.Y);
+            float pitchTo = (float)Math.Asin(to.Y);
+
+            float pitch = pitchTo - pitchFrom;
+
+            return new Vector2(yaw, pitch);
+        }
         public static Vector3 angleToVector3(Vector2 angle)
         {
             return

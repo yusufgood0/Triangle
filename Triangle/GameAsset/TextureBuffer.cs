@@ -40,7 +40,7 @@ namespace SlimeGame.GameAsset
                 for (int i = 0; i < _pixels.Length; i++)
                 {
                     if (screenBufferDistancePtr[i] == int.MaxValue) { continue; }
-                    screenBufferColorPtr[i] = screenBufferColorPtr[i] * Math.Min(1f / (screenBufferDistancePtr[i] / strength), 1);
+                    screenBufferColorPtr[i] = screenBufferColorPtr[i] * Math.Min(1f / ((float)screenBufferDistancePtr[i] / (float)strength), 1);
                 }
             }
         }
