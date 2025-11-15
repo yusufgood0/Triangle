@@ -13,17 +13,24 @@ namespace SlimeGame.Models.Shapes
     internal struct Square : Shape
     {
 
-        public readonly Vector3[] Vertices;
-        public readonly Vector3 AveragePos;
-        public Color Color;
+        Vector3 _p1;
+        Vector3 _p2;
+        Vector3 _p3;
+        Vector3 _p4;
+
+        public Vector3 P1 { get => this._p1; set => this._p1 = value; }
+        public Vector3 P2 { get => this._p2; set => this._p2 = value; }
+        public Vector3 P3 { get => this._p3; set => this._p3 = value; }
+        public Vector3 P4 { get => this._p4; set => this._p4 = value; }
+        public Color Color { get; set; }
 
         static readonly (int, int, int)[] triangleIndexes = new (int, int, int)[]
                 {
                     (1, 2, 3),
                     (1, 3, 4)
                 };
-        public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, Vertices, Color); }
-        Vector3 Shape.Position => AveragePos;
+        public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, new Vector3[] { _p1, _p2, _p3, _p4}, Color); }
+        Vector3 Shape.Position => _p1;
         Color Shape.Color
         {
             get => Color;
@@ -46,14 +53,23 @@ namespace SlimeGame.Models.Shapes
             ScaleX = _fov_scale * _screenCenter.X;
             ScaleY = _fov_scale * _screenCenter.Y;
         }
-        public Vector3 Normal()
+        public static Vector3 Normal(Vector3 P1, Vector3 P2, Vector3 P3, Vector3 P4)
         {
-            Vector3 side1 = Vertices[0] - Vertices[1];
-            Vector3 side2 = Vertices[0] - Vertices[3];
-            Vector3 normalDir = Vector3.Cross(side1, side2);
-            normalDir.Normalize();
+            Vector3 side1 = P2 - P1;
+            Vector3 side2 = P3 - P1;
+            Vector3 side3 = P4 - P1;
+
+            Vector3 normalDir1 = Vector3.Cross(side1, side2);
+            normalDir1.Normalize();
+            Vector3 normalDir2 = Vector3.Cross(side2, side3);
+            normalDir2.Normalize();
+
+            Vector3 normalDir = (normalDir1 + normalDir2) / 2;
             return normalDir;
         }
+        public readonly Vector3 Normal()
+            => Normal(_p1, _p2, _p3,_p4);
+        
         public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
         {
             lightDirection.Normalize();
@@ -61,15 +77,17 @@ namespace SlimeGame.Models.Shapes
             Vector3 normalDir = Normal();
 
             // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
-            float dotProduct = Vector3.Dot(-normalDir, lightDirection);
+            float dotProduct = Vector3.Dot(normalDir, lightDirection);
 
             // mix colors based on the difference in rays
             return Color.Lerp(triangleColor, lightColor, dotProduct / 2);
         }
         public Square(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4, Color color = new())
         {
-            Vertices = new Vector3[] { p1, p2, p3, p4 };
-            AveragePos = (p1 + p2 + p3 + p4) / 4;
+            _p1 = p1;
+            _p2 = p2;
+            _p3 = p3;
+            _p4 = p4;
             Color = color;
         }
         public unsafe void Draw(
@@ -82,10 +100,10 @@ namespace SlimeGame.Models.Shapes
             )
         {
             if (
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[0], out Point p1) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[1], out Point p2) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[2], out Point p3) ||
-            !WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[3], out Point p4)
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, _p1, out Point p1) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, _p2, out Point p2) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, _p3, out Point p3) ||
+            !WorldPosToScreenPos(cameraPosition, pitch, yaw, _p4, out Point p4)
             ) { return; }
 
             //if (IsBackFacing(p1, p2, p3)) return; // Skip back-facing triangles

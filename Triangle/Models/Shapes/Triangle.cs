@@ -114,7 +114,7 @@ namespace SlimeGame.Models.Shapes
 
             return w1 >= 0 && w2 >= 0 && w3 >= 0;
         }
-        private static bool IsBackFacing(Point a, Point b, Point c)
+        public static bool IsBackFacing(Point a, Point b, Point c)
         {
             // Compute the edge vectors
             int edge1X = b.X - a.X;

@@ -13,6 +13,9 @@ namespace SlimeGame.Models
     //    BoundingBox GenericModel.BoundingBox => new(Position, BRB);
     //    Shape[] GenericModel.Shapes => CreateSquares();
     //    Color GenericModel.Color { get => _color; set => _color = value; }
+    //    Vector3 GenericModel.Position { get => _color; set => _color = value; }
+
+    //    Vector3[] Points;
 
     //}
 }

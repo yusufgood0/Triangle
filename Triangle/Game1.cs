@@ -2,10 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SlimeGame.Enemies;
@@ -15,8 +12,6 @@ using SlimeGame.Input;
 using SlimeGame.Menus;
 using SlimeGame.Models;
 using SlimeGame.Models.Shapes;
-using static System.Collections.Specialized.BitVector32;
-using static SlimeGame.Game1;
 namespace SlimeGame
 {
     public class Game1 : Game
@@ -116,7 +111,6 @@ namespace SlimeGame
                     {
                         Vector3 pos = new Vector3(size * x * 2, size * y * -2, size * z * 2);
                         _models.Add(new Cube(pos, size, size, size));
-                        //_models[^1].SetRotation(pos, MathHelper.PiOver4, MathHelper.PiOver4);
                     }
                 }
             }
@@ -172,7 +166,7 @@ namespace SlimeGame
 
             int H = _seedMapper.height;
             int W = _seedMapper.width;
-            _seedMapper.SmoothenHeights(20);
+            _seedMapper.SmoothenHeights(10);
 
             for (int i = 0; i < 3; i++)
             {
@@ -290,7 +284,7 @@ namespace SlimeGame
                         i--;
                         continue;
                     }
-                    particle.Float(4);
+                    _squareParticles[i] = _squareParticles[i].Float(20);
                 }
                 for (int i = 0; i < Enemies.Count; i++)
                 {
@@ -471,7 +465,7 @@ namespace SlimeGame
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = new Vector3[_seedMapper.height * _seedMapper.width];
             var valueMap = _seedMapper.Values;
-            var Colors = new Color[] { Color.DarkSeaGreen, Color.Black};
+            var Colors = new Color[] { Color.DarkSeaGreen, Color.DarkSlateBlue};
 
             for (int y = 0; y < _seedMapper.height; y++)
             {
@@ -529,7 +523,7 @@ namespace SlimeGame
                         );
                 }
             }
-            TargetMesh = new Mesh(meshIndeces.ToArray(), heightMap);
+            TargetMesh = new Mesh(meshIndeces.ToArray(), new (int, int, int)[]{ }, heightMap);
             TargetMesh.Draw(
                 ref _screenBuffer,
                 meshColors.ToArray(),
@@ -574,8 +568,7 @@ namespace SlimeGame
             visibleShapes.AddRange(orbShapes);
 
             /* Light source follows players crystal ball */
-            lightSource = _crystalBall.Position;
-
+            lightSource = _player.EyePos;
             /* Moves Colors on the CrystalBall */
             _crystalBall.UpdateHighlights(_spellbook, _player);
 
@@ -614,7 +607,7 @@ namespace SlimeGame
             GraphicsDevice.Clear(Color.Black);
 
             // Prepare screen texture
-            _screenBuffer.applyDepth(1200);
+            //_screenBuffer.applyDepth(1200);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             
 
@@ -633,7 +626,7 @@ namespace SlimeGame
 
             // Cleanup after drawing
             screenTextureBuffer.Dispose();
-            _screenBuffer.Clear(Color.Black);
+            _screenBuffer.Clear(Color.LightBlue);
 
             base.Draw(gameTime);
         }
