@@ -149,7 +149,7 @@ namespace SlimeGame
                 drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
             }
             _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, drawParemeters, defaultButtonColor);
-            _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters, defaultButtonColor);
+            _settingsMenu = new ElementKeybindMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters, defaultButtonColor);
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
             
