@@ -168,7 +168,7 @@ namespace SlimeGame
             int W = _seedMapper.width;
             _seedMapper.SmoothenHeights(10);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 (p1x, p1y) = (0, rnd.Next(0, H));
                 (p2x, p2y) = (W, rnd.Next(0, H));
@@ -185,7 +185,7 @@ namespace SlimeGame
                     p4x, p4y
                 );
             }
-            _seedMapper.SmoothenHeights(13);
+            _seedMapper.SmoothenHeights(15);
             _seedMapper.ApplySeaLevel(-50);
 
             var (PlayerX, PlayerY) = _seedMapper.CubicBezier(0.1f,
@@ -457,7 +457,7 @@ namespace SlimeGame
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.LightGray);
+            GraphicsDevice.Clear(Color.Black);
 
             DateTime startTime = DateTime.Now;
 
@@ -465,7 +465,7 @@ namespace SlimeGame
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = new Vector3[_seedMapper.height * _seedMapper.width];
             var valueMap = _seedMapper.Values;
-            var Colors = new Color[] { Color.DarkSeaGreen, Color.DarkSlateBlue};
+            var Colors = new Color[] { Color.DarkSeaGreen, Color.Black };
 
             for (int y = 0; y < _seedMapper.height; y++)
             {
@@ -607,7 +607,7 @@ namespace SlimeGame
             GraphicsDevice.Clear(Color.Black);
 
             // Prepare screen texture
-            //_screenBuffer.applyDepth(1200);
+            _screenBuffer.applyDepth(1200);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             
 
@@ -626,7 +626,7 @@ namespace SlimeGame
 
             // Cleanup after drawing
             screenTextureBuffer.Dispose();
-            _screenBuffer.Clear(Color.LightBlue);
+            _screenBuffer.Clear(Color.Black);
 
             base.Draw(gameTime);
         }

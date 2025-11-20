@@ -29,7 +29,7 @@ namespace SlimeGame.Models.Shapes
                     (1, 2, 3),
                     (1, 3, 4)
                 };
-        public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, new Vector3[] { _p1, _p2, _p3, _p4}, Color); }
+        public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, new Vector3[] { _p1, _p2, _p3, _p4 }, Color); }
         Vector3 Shape.Position => _p1;
         Color Shape.Color
         {
@@ -68,8 +68,8 @@ namespace SlimeGame.Models.Shapes
             return normalDir;
         }
         public readonly Vector3 Normal()
-            => Normal(_p1, _p2, _p3,_p4);
-        
+            => Normal(_p1, _p2, _p3, _p4);
+
         public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
         {
             lightDirection.Normalize();
@@ -120,6 +120,15 @@ namespace SlimeGame.Models.Shapes
 
             if (width < 1 || height < 1) return;
 
+            int p2minusp1X = p2.X - p1.X;
+            int p2minusp1Y = p2.Y - p1.Y;
+            int p3minusp2X = p3.X - p2.X;
+            int p3minusp2Y = p3.Y - p2.Y;
+            int p4minusp3X = p4.X - p3.X;
+            int p4minusp3Y = p4.Y - p3.Y;
+            int p1minusp4X = p1.X - p4.X;
+            int p1minusp4Y = p1.Y - p4.Y;
+
             fixed (Color* screenBufferColorPtr = screenBuffer.Pixels)
             fixed (int* screenBufferDistancePtr = screenBuffer.Distance)
                 for (int y = ymin; y < ymax; y++)
@@ -130,60 +139,80 @@ namespace SlimeGame.Models.Shapes
                         int index = yTimesWidth + x;
 
                         if (distance > screenBufferDistancePtr[index]) continue;
-                        if (IsPointNotInQuad(x, y, p1, p2, p3, p4)) continue;
+                        if (IsPointNotInQuad(x, y, p1, p2, p3, p4,
+                            p2minusp1X,
+                            p2minusp1Y,
+                            p3minusp2X,
+                            p3minusp2Y,
+                            p4minusp3X,
+                            p4minusp3Y,
+                            p1minusp4X,
+                            p1minusp4Y)) continue;
 
-                        screenBufferColorPtr[index] = color;
-                        screenBufferDistancePtr[index] = distance;
-                    }
-                }
+            screenBufferColorPtr[index] = color;
+            screenBufferDistancePtr[index] = distance;
         }
-        public static bool WorldPosToScreenPos(
-            Vector3 cameraPosition,
-            float pitch,
-            float yaw,
-            Vector3 objectPosition,
-            out Point screenPos
-            )
-        {
-            Vector3 relativePos = objectPosition - cameraPosition;
-            Vector3 rotatedrelativePos = General.RotateVector(relativePos, yaw, pitch);
+    }
+}
+public static bool WorldPosToScreenPos(
+    Vector3 cameraPosition,
+    float pitch,
+    float yaw,
+    Vector3 objectPosition,
+    out Point screenPos
+    )
+{
+    Vector3 relativePos = objectPosition - cameraPosition;
+    Vector3 rotatedrelativePos = General.RotateVector(relativePos, yaw, pitch);
 
-            if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return as failed
+    if (rotatedrelativePos.Z < 0) { screenPos = Point.Zero; return false; } // Object is behind the camera, return as failed
 
-            screenPos = new Point(
-                (int)(rotatedrelativePos.X / rotatedrelativePos.Z * ScaleX + _screenCenter.X),
-                (int)(rotatedrelativePos.Y / rotatedrelativePos.Z * ScaleY + _screenCenter.Y)
-            );
+    screenPos = new Point(
+        (int)(rotatedrelativePos.X / rotatedrelativePos.Z * ScaleX + _screenCenter.X),
+        (int)(rotatedrelativePos.Y / rotatedrelativePos.Z * ScaleY + _screenCenter.Y)
+    );
 
-            return true;
-        }
-        public static bool IsPointNotInQuad(int x, int y, Point p1, Point p2, Point p3, Point p4)
-        {
-            int c1 = (p2.X - p1.X) * (y - p1.Y) - (p2.Y - p1.Y) * (x - p1.X);
-            int c2 = (p3.X - p2.X) * (y - p2.Y) - (p3.Y - p2.Y) * (x - p2.X);
-            int c3 = (p4.X - p3.X) * (y - p3.Y) - (p4.Y - p3.Y) * (x - p3.X);
-            int c4 = (p1.X - p4.X) * (y - p4.Y) - (p1.Y - p4.Y) * (x - p4.X);
+    return true;
+}
+public static bool IsPointNotInQuad(int x, int y, Point p1, Point p2, Point p3, Point p4,
+    int p2minusp1X,
+    int p2minusp1Y,
+    int p3minusp2X,
+    int p3minusp2Y,
+    int p4minusp3X,
+    int p4minusp3Y,
+    int p1minusp4X,
+    int p1minusp4Y
+)
+{
 
-            bool hasNeg = (c1 < 0) || (c2 < 0) || (c3 < 0) || (c4 < 0);
-            bool hasPos = (c1 > 0) || (c2 > 0) || (c3 > 0) || (c4 > 0);
+    int c1 = (p2minusp1X) * (y - p1.Y) - (p2minusp1Y) * (x - p1.X);
+    int c2 = (p3minusp2X) * (y - p2.Y) - (p3minusp2Y) * (x - p2.X);
+    int c3 = (p4minusp3X) * (y - p3.Y) - (p4minusp3Y) * (x - p3.X);
+    int c4 = (p1minusp4X) * (y - p4.Y) - (p1minusp4Y) * (x - p4.X);
 
-            return hasNeg && hasPos;
-        }
-        public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
-        {
-            // Yaw rotation (around Y axis) // first for fps feel
-            float cosYaw = MathF.Cos(yaw);
-            float sinYaw = MathF.Sin(yaw);
-            float x1 = vector.X * cosYaw - vector.Z * sinYaw;
-            float z1 = vector.X * sinYaw + vector.Z * cosYaw;
+    bool hasNeg = (c1 < 0) || (c2 < 0) || (c3 < 0) || (c4 < 0);
+    bool hasPos = (c1 > 0) || (c2 > 0) || (c3 > 0) || (c4 > 0);
 
-            // Pitch rotation (around X axis)
-            float cosPitch = MathF.Cos(pitch);
-            float sinPitch = MathF.Sin(pitch);
-            float y1 = vector.Y * cosPitch - z1 * sinPitch;
-            float z2 = vector.Y * sinPitch + z1 * cosPitch;
+    return hasNeg && hasPos;
 
-            return new Vector3(x1, y1, z2);
-        }
+
+}
+public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
+{
+    // Yaw rotation (around Y axis) // first for fps feel
+    float cosYaw = MathF.Cos(yaw);
+    float sinYaw = MathF.Sin(yaw);
+    float x1 = vector.X * cosYaw - vector.Z * sinYaw;
+    float z1 = vector.X * sinYaw + vector.Z * cosYaw;
+
+    // Pitch rotation (around X axis)
+    float cosPitch = MathF.Cos(pitch);
+    float sinPitch = MathF.Sin(pitch);
+    float y1 = vector.Y * cosPitch - z1 * sinPitch;
+    float z2 = vector.Y * sinPitch + z1 * cosPitch;
+
+    return new Vector3(x1, y1, z2);
+}
     }
 }

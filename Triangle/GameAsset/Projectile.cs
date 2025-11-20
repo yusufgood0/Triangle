@@ -7,7 +7,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using SlimeGame.Generation;
 using SlimeGame.Models;
-using SlimeGame.Models.Shapes;
 
 namespace SlimeGame.GameAsset
 {

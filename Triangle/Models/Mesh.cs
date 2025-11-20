@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace SlimeGame.Models
 {
-    internal struct Mesh((int p1, int p2, int p3, int p4)[] SquareIndices, (int p1, int p2, int p3)[] TriangleIndeces, Vector3[] Vertices)
+    internal struct Mesh((int p1, int p2, int p3, int p4)[] SquareIndices, (int p1, int p2, int p3)[] TriangleIndeces, Vector3[] Vertices, Vector3 PivotPoint = new(), Vector2 Rotation = new())
     {
         static Point _screenCenter;
         static Point _CachedscreenSize;
@@ -21,6 +21,8 @@ namespace SlimeGame.Models
         static float ScaleX;
         static float ScaleY;
         static Point _errorPoint = Point.Zero;
+
+
         public static void Initialize(TextureBuffer screenBuffer) // call once per frame
         {
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
@@ -197,6 +199,16 @@ namespace SlimeGame.Models
 
             if (width < 1 || height < 1) return;
 
+            // Precompute calculations for edge functions
+            int p2minusp1X = p2.X - p1.X;
+            int p2minusp1Y = p2.Y - p1.Y;
+            int p3minusp2X = p3.X - p2.X;
+            int p3minusp2Y = p3.Y - p2.Y;
+            int p4minusp3X = p4.X - p3.X;
+            int p4minusp3Y = p4.Y - p3.Y;
+            int p1minusp4X = p1.X - p4.X;
+            int p1minusp4Y = p1.Y - p4.Y;
+
             fixed (Color* screenBufferColorPtr = screenBuffer.Pixels)
             fixed (int* screenBufferDistancePtr = screenBuffer.Distance)
                 for (int y = ymin; y < ymax; y++)
@@ -206,7 +218,15 @@ namespace SlimeGame.Models
                     {
                         int index = yTimesWidth + x;
                         if (distance > screenBufferDistancePtr[index]) continue;
-                        if (!IsPointInQuad(x, y, p1, p2, p3, p4)) continue;
+                        if (Square.IsPointNotInQuad(x, y, p1, p2, p3, p4,
+                            p2minusp1X,
+                            p2minusp1Y,
+                            p3minusp2X,
+                            p3minusp2Y,
+                            p4minusp3X,
+                            p4minusp3Y,
+                            p1minusp4X,
+                            p1minusp4Y)) continue;
 
                         screenBufferColorPtr[index] = color;
                         screenBufferDistancePtr[index] = distance;
@@ -234,17 +254,26 @@ namespace SlimeGame.Models
             return true;
         }
 
-        public static bool IsPointInQuad(int x, int y, Point p1, Point p2, Point p3, Point p4)
+        public Vector3 Rotate(Vector3 vector, Vector3 pivotPoint, Vector2 rotation)
+            => General.RotateVector(vector - pivotPoint, rotation.X, rotation.Y) + pivotPoint;
+        public void SetRotation(Vector3 pivot, Vector2 rotation)
         {
-            int c1 = (p2.X - p1.X) * (y - p1.Y) - (p2.Y - p1.Y) * (x - p1.X);
-            int c2 = (p3.X - p2.X) * (y - p2.Y) - (p3.Y - p2.Y) * (x - p2.X);
-            int c3 = (p4.X - p3.X) * (y - p3.Y) - (p4.Y - p3.Y) * (x - p3.X);
-            int c4 = (p1.X - p4.X) * (y - p4.Y) - (p1.Y - p4.Y) * (x - p4.X);
-
-            bool hasNeg = (c1 < 0) || (c2 < 0) || (c3 < 0) || (c4 < 0);
-            bool hasPos = (c1 > 0) || (c2 > 0) || (c3 > 0) || (c4 > 0);
-
-            return !(hasNeg && hasPos);
+            foreach (var vertexIndex in Enumerable.Range(0, Vertices.Count()))
+            {
+                Vertices[vertexIndex] = Rotate(Vertices[vertexIndex], pivot, rotation - Rotation);
+            }
+            PivotPoint = Rotate(PivotPoint, pivot, rotation - Rotation);
+            Rotation = rotation;
         }
+        public void ChangeRotation(Vector3 pivot, Vector2 rotation)
+        {
+            foreach (var vertexIndex in Enumerable.Range(0, Vertices.Count()))
+            {
+                Vertices[vertexIndex] = Rotate(Vertices[vertexIndex], pivot, rotation);
+            }
+            PivotPoint = Rotate(PivotPoint, pivot, rotation);
+            Rotation += rotation;
+        }
+
     }
 }

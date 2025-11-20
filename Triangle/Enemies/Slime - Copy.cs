@@ -13,13 +13,38 @@ namespace SlimeGame.Enemies
 {
     internal class Archer : Enemy
     {
+        enum state
+        {
+            Idle,
+            Attacking,
+            Recovering
+        }
         void Enemy.Update(in Player player, in List<Projectile> projectiles, in Random rnd, SeedMapper seedMap, int MapCellSize)
         {
             double TimeSinceLastJump = this.TimeSinceLastJump;
 
-            _speed.Y += 0.4f;
-            _speed.X *= 0.975f;
-            _speed.Z *= 0.975f;
+            if (_currentState == state.Idle)
+            {
+                _speed.Y += 0.4f;
+
+                _speed.X *= 0.975f;
+                _speed.Z *= 0.975f;
+            }
+            else if (_currentState == state.Attacking)
+            {
+                _speed.Y += 5f;
+
+                _speed.X *= 0.98f;
+                _speed.Z *= 0.98f;
+            }
+            else if (_currentState == state.Recovering)
+            {
+                _speed.Y += 0.8f;
+
+                _speed.X *= 0.975f;
+                _speed.Z *= 0.975f;
+            }
+
             _speed.Y *= 0.99f;
             _position += _speed;
 
@@ -28,12 +53,30 @@ namespace SlimeGame.Enemies
             {
                 _position.Y = heightAtPos;
                 _speed.Y = Math.Min(0, _speed.Y);
-                onGround = true;
             }
             if (TimeSinceLastJump > FlapCooldown)
             {
-                FlapAtPlayer(player.Position, rnd);
-                JumpTimer = DateTime.Now.AddSeconds(-rnd.NextDouble());
+                if (FlapPatternPos == FlapPatternLength)
+                {
+                    AttackPlayer(player.Position, rnd);
+                    JumpTimer = DateTime.Now.AddSeconds(rnd.NextDouble());
+                    FlapPatternPos = 0;
+                    _currentState = state.Attacking;
+                }
+                else
+                {
+                    FlapAtPlayer(player.Position, rnd);
+                    JumpTimer = DateTime.Now.AddSeconds(-rnd.NextDouble());
+                    FlapPatternPos++;
+                    if (_currentState == state.Attacking)
+                    {
+                        _currentState = state.Recovering;
+                    }
+                    else
+                    {
+                        _currentState = state.Idle;
+                    }
+                }
 
             }
 
@@ -54,7 +97,7 @@ namespace SlimeGame.Enemies
         {
             _speed += Vector3.Normalize(_position - source) * knockBackMultiplier * amount;
             _health -= amount;
-            Debug.WriteLine($"Slime hit! Health now {_health}");
+            Debug.WriteLine($"{this.ToString()} hit! Health now {_health}");
         }
         BoundingBox Enemy.BoundingBox { get => _hitbox; }
         BoundingBox Enemy.Hitbox { get => _hitbox; }
@@ -65,33 +108,24 @@ namespace SlimeGame.Enemies
         int Enemy.Height { get => Size; }
 
 
-        private const int JumpStrength = 35;
-        private const int JumpMin = 50;
-        private const int JumpMax = 150;
-        private const int JumpPatternLength = 2;
-        private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
+        private const int FlapPatternLength = 5;
         private const int Size = 250;
         private const int Damage = 20;
         private const int MaxHealth = 125;
-        private const int minHeal = 1;
-        private const int maxHeal = 5;
         private const float FlapCooldown = 1;
-        private const float SquishFactorUp = 200;
-        private const float SquishFactorDown = -100;
-        private const float SquishFactorNormal = 50;
         private const float knockBackMultiplier = 1f;
 
         private Vector3 _position;
         private Vector3 _speed;
-        private bool onGround = false;
-        private GenericModel[] _model = new GenericModel[1];
-        private float _squish = SquishFactorNormal;
-        private double TimeSinceLastJump => (DateTime.Now - JumpTimer).TotalSeconds;
         private int _health;
-        private int _jumpPattern = 0;
+
+        private GenericModel[] _model = new GenericModel[1];
         private BoundingBox _hitbox;
-        private DateTime HealTimer = DateTime.Now;
+
+        private double TimeSinceLastJump => (DateTime.Now - JumpTimer).TotalSeconds;
         private DateTime JumpTimer = DateTime.Now;
+        private int FlapPatternPos = 0;
+        private state _currentState = state.Idle;
 
 
         private void FormModel(Vector2 rotation)
@@ -103,13 +137,20 @@ namespace SlimeGame.Enemies
 
             _hitbox = new BoundingBox(newCube.Position, newCube.Opposite);
         }
+        private void AttackPlayer(Vector3 playerPos, in Random rnd)
+        {
+            Vector3 dir = playerPos - _position;
+            _speed.Z += Math.Clamp(dir.Z * 0.1f, -40, 40);
+            _speed.X += Math.Clamp(dir.X * 0.1f, -40, 40);
+            _speed.Y += 15 + dir.Y * 0.01f;
+        }
         private void FlapAtPlayer(Vector3 playerPos, in Random rnd)
         {
             Vector3 dir = playerPos - _position;
-            dir.Z += rnd.Next(-1800, 1800);
-            dir.X += rnd.Next(-1800, 1800);
-            _speed.Z += Math.Clamp(dir.Z * 0.05f, -20, 20);
-            _speed.X += Math.Clamp(dir.X * 0.05f, -20, 20);
+            dir.Z += rnd.Next(-1000, 1000);
+            dir.X += rnd.Next(-1000, 1000);
+            _speed.Z += dir.Z * 0.01f;
+            _speed.X += dir.X * 0.01f;
             _speed.Y -= rnd.Next(15, 40) - dir.Y * 0.01f;
         }
         public Archer(Vector3 position)
