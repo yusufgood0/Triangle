@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,14 +15,39 @@ using System.Threading.Tasks;
 namespace SlimeGame.Models
 {
 
-    internal struct Mesh((int p1, int p2, int p3, int p4)[]? SquareIndices, (int p1, int p2, int p3)[]? TriangleIndeces, Vector3[] Vertices)
+    internal struct MeshModel : GenericModel
     {
+        Shape[] GenericModel.Shapes => GetShapes(); // Unrecommended: called multiple times per frame
+        Vector3 GenericModel.Position { get => OriginPosition; set => OriginPosition = value; }
+        Color GenericModel.Color { get => Colors[0]; set => Colors[0] = value; }
+        BoundingBox GenericModel.BoundingBox => GetBoundingBox();
+
+        (int p1, int p2, int p3, int p4)[]? SquareIndices;
+        (int p1, int p2, int p3)[]? TriangleIndeces;
+        Vector3[] Vertices;
+        Color[] Colors;
+        Vector3 OriginPosition;
+
+        public MeshModel
+            (
+            Vector3[] Vertices, 
+            Color[] Colors, 
+            (int p1, int p2, int p3)[]? TriangleIndeces = null, 
+            (int p1, int p2, int p3, int p4)[]? SquareIndices = null
+            )
+        {
+            this.Colors = Colors;
+            this.SquareIndices = SquareIndices;
+            this.TriangleIndeces = TriangleIndeces;
+            this.Vertices = Vertices;
+        }
 
         static Point _screenCenter;
         static Point _CachedscreenSize;
         static float _scaleX;
         static float _scaleY;
         static Point _errorPoint = Point.Zero;
+
         public static void Initialize(TextureBuffer screenBuffer) // call once per frame
         {
             _screenCenter = new Point(screenBuffer.width / 2, screenBuffer.height / 2);
@@ -33,9 +59,81 @@ namespace SlimeGame.Models
             _scaleX = Fov_scale * _screenCenter.X;
             _scaleY = Fov_scale * _screenCenter.Y;
         }
+
+        private Shape[] GetShapes()
+        {
+            List<Shape> shapes = new List<Shape>();
+            if (SquareIndices != null)
+            {
+                for (int i = 0; i < SquareIndices.Length; i++)
+                {
+                    shapes.Add(new Square(
+                        Vertices[SquareIndices[i].p1],
+                        Vertices[SquareIndices[i].p2],
+                        Vertices[SquareIndices[i].p3],
+                        Vertices[SquareIndices[i].p4],
+                        Colors[i]
+                        ));
+                }
+            }
+            if (TriangleIndeces != null)
+            {
+                for (int i = 0; i < TriangleIndeces.Length; i++)
+                {
+                    shapes.Add(new Triangle(
+                        Vertices[TriangleIndeces[i].p1],
+                        Vertices[TriangleIndeces[i].p2],
+                        Vertices[TriangleIndeces[i].p3],
+                        Colors[i]
+                        ));
+                }
+            }
+            return shapes.ToArray();
+        }
+        private BoundingBox GetBoundingBox()
+        {
+            Vector3 min = new Vector3(float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue);
+            if (SquareIndices != null)
+            {
+                for (int i = 0; i < SquareIndices.Length; i++)
+                {
+                    min = Min(min, Vertices[SquareIndices[i].p1]);
+                    min = Min(min, Vertices[SquareIndices[i].p2]);
+                    min = Min(min, Vertices[SquareIndices[i].p3]);
+                    min = Min(min, Vertices[SquareIndices[i].p4]);
+                }
+            }
+            if (TriangleIndeces != null)
+            {
+                for (int i = 0; i < TriangleIndeces.Length; i++)
+                {
+                    min = Min(min, Vertices[TriangleIndeces[i].p1]);
+                    min = Min(min, Vertices[TriangleIndeces[i].p2]);
+                    min = Min(min, Vertices[TriangleIndeces[i].p3]);
+                }
+            }
+            if (min == new Vector3(float.MaxValue)) throw new Exception("MeshModel has no vertices to calculate BoundingBox.");
+            return new BoundingBox(min, max);
+        }
+        private Vector3 Min(Vector3 a, Vector3 b)
+        {
+            return new Vector3(
+                MathF.Min(a.X, b.X),
+                MathF.Min(a.Y, b.Y),
+                MathF.Min(a.Z, b.Z)
+                );
+        }
+        private Vector3 Max(Vector3 a, Vector3 b)
+        {
+            return new Vector3(
+                MathF.Max(a.X, b.X),
+                MathF.Max(a.Y, b.Y),
+                MathF.Max(a.Z, b.Z)
+                );
+        }
         public void Draw(
             ref TextureBuffer screenBuffer,
-            Color[] colors,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
@@ -90,7 +188,7 @@ namespace SlimeGame.Models
                     float dotProduct = MathF.Max(Vector3.Dot(normalDir, lightDirection), 0f);
 
                     // Mix (Lerp) colors based on light intensity
-                    Color color = Color.Lerp(colors[i], lightColor, dotProduct);
+                    Color color = Color.Lerp(Colors[i], lightColor, dotProduct);
 
                     int distance = (int)Vector3.Distance(cameraPosition, p1);
                     DrawSquare(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);
@@ -124,7 +222,7 @@ namespace SlimeGame.Models
                     float dotProduct = Vector3.Dot(-normalDir, lightDirection);
 
                     // mix colors based on the difference in rays
-                    Color color = Color.Lerp(colors[i], lightColor, dotProduct / 3);
+                    Color color = Color.Lerp(Colors[i], lightColor, dotProduct / 3);
 
                     int distance = (int)Vector3.Distance(cameraPosition, p1);
                     DrawTriangle(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);

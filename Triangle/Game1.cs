@@ -465,7 +465,7 @@ namespace SlimeGame
             BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
             var heightMap = new Vector3[_seedMapper.height * _seedMapper.width];
             var valueMap = _seedMapper.Values;
-            var Colors = new Color[] { Color.DarkSeaGreen, Color.DarkSlateBlue};
+            var Colors = new Color[] { Color.DarkSeaGreen, Color.Black};
 
             for (int y = 0; y < _seedMapper.height; y++)
             {
@@ -607,7 +607,7 @@ namespace SlimeGame
             GraphicsDevice.Clear(Color.Black);
 
             // Prepare screen texture
-            //_screenBuffer.applyDepth(1200);
+            _screenBuffer.applyDepth(1200);
             _screenBuffer.ToTexture2D(GraphicsDevice, out screenTextureBuffer);
             
 
@@ -626,7 +626,7 @@ namespace SlimeGame
 
             // Cleanup after drawing
             screenTextureBuffer.Dispose();
-            _screenBuffer.Clear(Color.LightBlue);
+            _screenBuffer.Clear(Color.Black);
 
             base.Draw(gameTime);
         }
