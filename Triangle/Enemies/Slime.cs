@@ -67,7 +67,7 @@ namespace SlimeGame.Enemies
         {
             _speed += Vector3.Normalize(_position - source) * knockBackMultiplier * amount;
             _health -= amount;
-            Debug.WriteLine($"Slime hit! Health now {_health}");
+            Debug.WriteLine($"{this.ToString()} hit! Health now {_health}");
         }
         BoundingBox Enemy.BoundingBox { get => _hitbox; }
         BoundingBox Enemy.Hitbox { get => _hitbox; }

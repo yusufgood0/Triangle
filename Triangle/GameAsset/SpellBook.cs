@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Xna.Framework;
-using SlimeGame.Models.Shapes;
+using SlimeGame.Models;
 
 namespace SlimeGame.GameAsset
 {

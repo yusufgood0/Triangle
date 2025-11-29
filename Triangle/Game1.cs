@@ -149,7 +149,7 @@ namespace SlimeGame
                 drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
             }
             _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, drawParemeters, defaultButtonColor);
-            _settingsMenu = new SettingsMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters, defaultButtonColor);
+            _settingsMenu = new ElementKeybindMenu(GraphicsDevice, _spriteFont, _masterInput, drawParemeters, defaultButtonColor);
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
             
@@ -168,7 +168,7 @@ namespace SlimeGame
             int W = _seedMapper.width;
             _seedMapper.SmoothenHeights(10);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 (p1x, p1y) = (0, rnd.Next(0, H));
                 (p2x, p2y) = (W, rnd.Next(0, H));
@@ -185,7 +185,7 @@ namespace SlimeGame
                     p4x, p4y
                 );
             }
-            _seedMapper.SmoothenHeights(13);
+            _seedMapper.SmoothenHeights(15);
             _seedMapper.ApplySeaLevel(-50);
 
             var (PlayerX, PlayerY) = _seedMapper.CubicBezier(0.1f,
@@ -457,7 +457,7 @@ namespace SlimeGame
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.LightGray);
+            GraphicsDevice.Clear(Color.Black);
 
             DateTime startTime = DateTime.Now;
 

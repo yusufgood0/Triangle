@@ -38,11 +38,13 @@ namespace SlimeGame.Input
         static readonly Buttons[] AllButtons = (Buttons[])Enum.GetValues(typeof(Buttons));
         public MasterInput()
         {
+            //Initialize states to avoid null errors
             KeyboardState = Keyboard.GetState();
             GamePadState = GamePad.GetState(0);
             PreviousKeyboardState = Keyboard.GetState();
             PreviousGamePadState = GamePad.GetState(0);
 
+            //Insert default keybinds
             Keybinds.Add(KeybindActions.AddElementFire, new Keybind(Keys.D1, Buttons.B));
             Keybinds.Add(KeybindActions.AddElementWater, new Keybind(Keys.D2, Buttons.X));
             Keybinds.Add(KeybindActions.AddElementEarth, new Keybind(Keys.D3, Buttons.A));
@@ -51,6 +53,10 @@ namespace SlimeGame.Input
             Keybinds.Add(KeybindActions.BackButton, new Keybind(Keys.Escape, Buttons.Start));
             Keybinds.Add(KeybindActions.Jump, new Keybind(Keys.Space, Buttons.LeftTrigger));
             Keybinds.Add(KeybindActions.GamePadClick, new Keybind(Keys.None, Buttons.RightStick));
+        }
+        public void AddKeybind(KeybindActions Action, Keybind keybind)
+        {
+            Keybinds.Add(Action, keybind);
         }
         public void UpdateStates()
         {
