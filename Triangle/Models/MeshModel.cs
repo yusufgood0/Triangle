@@ -1,46 +1,54 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using SlimeGame.GameAsset;
-using SlimeGame.Models.Shapes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using SlimeGame.GameAsset;
+using SlimeGame.Models.Shapes;
 
 
 namespace SlimeGame.Models
 {
 
-    internal struct MeshModel : GenericModel
+    internal struct MeshModel(
+            Vector3 OriginPosition,
+            Vector3[] Vertices,
+            Color[] Colors,
+            (int p1, int p2, int p3)[]? TriangleIndeces = null,
+            (int p1, int p2, int p3, int p4)[]? SquareIndices = null
+            ) : GenericModel
     {
         Shape[] GenericModel.Shapes => GetShapes(); // Unrecommended: called multiple times per frame
         Vector3 GenericModel.Position { get => OriginPosition; set => OriginPosition = value; }
         Color GenericModel.Color { get => Colors[0]; set => Colors[0] = value; }
         BoundingBox GenericModel.BoundingBox => GetBoundingBox();
 
-        (int p1, int p2, int p3, int p4)[]? SquareIndices;
-        (int p1, int p2, int p3)[]? TriangleIndeces;
-        Vector3[] Vertices;
-        Color[] Colors;
-        Vector3 OriginPosition;
+        //(int p1, int p2, int p3, int p4)[]? SquareIndices;
+        //(int p1, int p2, int p3)[]? TriangleIndeces;
+        //Vector3[] Vertices;
+        //Color[] Colors;
+        //Vector3 OriginPosition;
 
-        public MeshModel
-            (
-            Vector3[] Vertices, 
-            Color[] Colors, 
-            (int p1, int p2, int p3)[]? TriangleIndeces = null, 
-            (int p1, int p2, int p3, int p4)[]? SquareIndices = null
-            )
-        {
-            this.Colors = Colors;
-            this.SquareIndices = SquareIndices;
-            this.TriangleIndeces = TriangleIndeces;
-            this.Vertices = Vertices;
-        }
+        //public MeshModel
+        //    (
+        //    Vector3 OriginPosition,
+        //    Vector3[] Vertices, 
+        //    Color[] Colors, 
+        //    (int p1, int p2, int p3)[]? TriangleIndeces = null, 
+        //    (int p1, int p2, int p3, int p4)[]? SquareIndices = null
+        //    )
+        //{
+        //    this.OriginPosition = OriginPosition;
+        //    this.Colors = Colors;
+        //    this.SquareIndices = SquareIndices;
+        //    this.TriangleIndeces = TriangleIndeces;
+        //    this.Vertices = Vertices;
+        //}
 
         static Point _screenCenter;
         static Point _CachedscreenSize;
@@ -132,8 +140,50 @@ namespace SlimeGame.Models
                 MathF.Max(a.Z, b.Z)
                 );
         }
+        public void DrawVertices(
+            ref TextureBuffer screenBuffer,
+            Vector3 cameraPosition,
+            float pitch,
+            float yaw,
+            int PointSize = 2
+            )
+        {
+            bool dontDrawSquares = SquareIndices == null;
+            bool dontDrawTriangles = TriangleIndeces == null;
+            if (dontDrawSquares && dontDrawTriangles) return;
+
+            Point[] Points = new Point[Vertices.Length];
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                WorldPosToScreenPos(cameraPosition, pitch, yaw, Vertices[i], out var Point);
+                Points[i] = Point;
+            }
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                var Vertex = Vertices[i];
+                var point = Points[i];
+                if (point == _errorPoint) continue;
+                int pointSize = (int)(PointSize / (0.1f*Vector3.Distance(Vertex, cameraPosition)));
+                DrawSquare(
+                    ref screenBuffer,
+                    Color.White,
+                    cameraPosition,
+                    pitch,
+                    yaw,
+                    (int)Vector3.Distance(cameraPosition, Vertex),
+                    (0, 1, 2, 3),
+                    new Point[] { 
+                        new Point(point.X - pointSize, point.Y - pointSize),
+                        new Point(point.X + pointSize, point.Y - pointSize),
+                        new Point(point.X + pointSize, point.Y + pointSize),
+                        new Point(point.X - pointSize, point.Y + pointSize)
+                    }
+                    );
+            }
+        }
         public void Draw(
             ref TextureBuffer screenBuffer,
+            float lightIntensity,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
@@ -169,27 +219,34 @@ namespace SlimeGame.Models
                     if (Points[indexes.p4] == _errorPoint)
                         continue;
 
-                    // Compute normalized light direction (from point toward light)
-                    Vector3 lightDirection = Vector3.Normalize(lightPos - p1);
+                    Color color;
+                    if (lightIntensity != 0)
+                    {
+                        // Compute normalized light direction (from point toward light)
+                        Vector3 lightDirection = Vector3.Normalize(lightPos - p1);
 
-                    // Compute triangle sides
-                    Vector3 side1 = p2 - p1;
-                    Vector3 side2 = p3 - p1;
-                    Vector3 side3 = p4 - p1;
+                        // Compute triangle sides
+                        Vector3 side1 = p2 - p1;
+                        Vector3 side2 = p3 - p1;
+                        Vector3 side3 = p4 - p1;
 
-                    // Compute two normals (e.g. for adjacent triangles)
-                    Vector3 normalDir1 = Vector3.Normalize(Vector3.Cross(side1, side2));
-                    Vector3 normalDir2 = Vector3.Normalize(Vector3.Cross(side2, side3));
+                        // Compute two normals (e.g. for adjacent triangles)
+                        Vector3 normalDir1 = Vector3.Normalize(Vector3.Cross(side1, side2));
+                        Vector3 normalDir2 = Vector3.Normalize(Vector3.Cross(side2, side3));
 
-                    // Average the normals
-                    Vector3 normalDir = (normalDir1 + normalDir2) * 0.5f;
+                        // Average the normals
+                        Vector3 normalDir = (normalDir1 + normalDir2) * 0.5f;
 
-                    // Calculate how much the surface faces the light (clamped so no negative lighting)
-                    float dotProduct = MathF.Max(Vector3.Dot(normalDir, lightDirection), 0f);
+                        // Calculate how much the surface faces the light (clamped so no negative lighting)
+                        float dotProduct = MathF.Max(Vector3.Dot(normalDir, lightDirection), 0f);
 
-                    // Mix (Lerp) colors based on light intensity
-                    Color color = Color.Lerp(Colors[i], lightColor, dotProduct);
-
+                        // Mix (Lerp) colors based on light intensity
+                        color = Color.Lerp(Colors[i], lightColor, dotProduct * lightIntensity + 0.25f);
+                    }
+                    else
+                    {
+                        color = Colors[i];
+                    }
                     int distance = (int)Vector3.Distance(cameraPosition, p1);
                     DrawSquare(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);
                     continue;
@@ -210,20 +267,26 @@ namespace SlimeGame.Models
                     if (Points[indexes.p3] == _errorPoint)
                         continue;
 
-                    Vector3 lightDirection = p1 - lightPos;
-                    lightDirection.Normalize();
+                    Color color;
+                    if (lightIntensity != 0)
+                    {
+                        Vector3 lightDirection = p1 - lightPos;
+                        lightDirection.Normalize();
 
-                    Vector3 side1 = p1 - p2;
-                    Vector3 side2 = p1 - p3;
-                    Vector3 normalDir = Vector3.Cross(side1, side2);
-                    normalDir.Normalize();
+                        Vector3 side1 = p1 - p2;
+                        Vector3 side2 = p1 - p3;
+                        Vector3 normalDir = Vector3.Cross(side1, side2);
+                        normalDir.Normalize();
 
-                    // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
-                    float dotProduct = Vector3.Dot(-normalDir, lightDirection);
-
-                    // mix colors based on the difference in rays
-                    Color color = Color.Lerp(Colors[i], lightColor, dotProduct / 3);
-
+                        // Calculate the difference in rays between the light direction and the normal vector using Vector3.Dot
+                        float dotProduct = Vector3.Dot(-normalDir, lightDirection);
+                        // mix colors based on the difference in rays
+                        color = Color.Lerp(Colors[i], lightColor, dotProduct / 3);
+                    }
+                    else
+                    {
+                        color = Colors[i];
+                    }
                     int distance = (int)Vector3.Distance(cameraPosition, p1);
                     DrawTriangle(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);
                     continue;

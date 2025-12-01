@@ -20,7 +20,7 @@ namespace SlimeGame.GameAsset
         public float NearClipPlane { get; set; }
         public float FarClipPlane { get; set; }
 
-        // Derived Matrices (The most important parts!)
+        // Matrices
         public Matrix ViewMatrix { get; private set; }
         public Matrix FieldOfViewMatrix { get; private set; }
         public BoundingFrustum Frustum { get; private set; }
@@ -30,13 +30,13 @@ namespace SlimeGame.GameAsset
             AspectRatio = aspectRatio;
             Position = position;
             Forward = forward;
-            Up = upVector; // Standard up direction
+            Up = upVector; // up direction (usually down in monogame)
 
-            FieldOfView = FOV; // 45 degrees
+            FieldOfView = FOV; // 45 degrees is recommended
             NearClipPlane = 0.01f;
             FarClipPlane = viewDistance;
 
-            // Calculate the initial matrices
+            // Calculate initial matrices
             UpdateViewMatrix();
             UpdateProjectionMatrix();
         }
@@ -79,7 +79,7 @@ namespace SlimeGame.GameAsset
             AspectRatio = aspectRatio;
             UpdateProjectionMatrix();
         }
-        // Rotates the camera (using a simple Yaw/Pitch method. Can be prone to gimbal lock if looking straight up/down)
+        // Rotates the camera (using a simple Yaw/Pitch method. Prone to gimbal lock if looking straight up/down)
         public void Rotate(float yaw, float pitch)
         {
             // Create rotation matrices
@@ -100,8 +100,6 @@ namespace SlimeGame.GameAsset
             (float)Math.Sin(pitch),
             (float)(Math.Cos(pitch) * Math.Cos(yaw))
             );
-            //Forward.Normalize();
-
             UpdateViewMatrix();
         }
     }

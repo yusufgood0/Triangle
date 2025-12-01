@@ -37,6 +37,7 @@ namespace SlimeGame.Models
         public void Draw(
             ref TextureBuffer screenBuffer,
             Color[] colors,
+            float lightIntensity,
             Vector3 cameraPosition,
             float pitch,
             float yaw,
@@ -91,7 +92,7 @@ namespace SlimeGame.Models
                     float dotProduct = MathF.Max(Vector3.Dot(normalDir, lightDirection), 0f);
 
                     // Mix (Lerp) colors based on light intensity
-                    Color color = Color.Lerp(colors[i], lightColor, dotProduct);
+                    Color color = Color.Lerp(colors[i], lightColor, dotProduct * lightIntensity + 0.25f);
 
                     int distance = (int)Vector3.Distance(cameraPosition, p1);
                     DrawSquare(ref screenBuffer, color, cameraPosition, pitch, yaw, distance, indexes, Points);

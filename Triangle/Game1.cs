@@ -51,6 +51,7 @@ namespace SlimeGame
         private PauseMenu _pauseMenu;
         private SettingsMenu _settingsMenu;
         private gamestates _currentGameState = gamestates.Playing;
+        private MeshModel MeshModel;
         private bool Playing => _currentGameState == gamestates.Playing;
         private bool Paused => _currentGameState == gamestates.Paused;
         private bool SettingsMenu => _currentGameState == gamestates.SettingsMenu;
@@ -87,6 +88,8 @@ namespace SlimeGame
             _graphics.PreferredBackBufferHeight = screenSize.Y;
             _graphics.ApplyChanges();
 
+            
+
             /* Initilizes blank texture as a 1x1 white pixel texture */
             _blankTexture = new Texture2D(GraphicsDevice, 1, 1);
             _blankTexture.SetData(new Color[] { Color.White });
@@ -101,7 +104,7 @@ namespace SlimeGame
             }
             // */
 
-            /* randomly places many cubes around for testing */ 
+            /* randomly places many cubes around for testing  
             int size = 400;
             for (int x = 0; x < 5; x++)
             {
@@ -134,6 +137,7 @@ namespace SlimeGame
             Triangle.Initialize(_screenBuffer);
             Square.Initialize(_screenBuffer);
             Mesh.Initialize(_screenBuffer);
+            MeshModel.Initialize(_screenBuffer);
             Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
             lightSource = new(MapCenter.X, -1000, MapCenter.Y);
             if (FillScreen)
@@ -212,9 +216,11 @@ namespace SlimeGame
                 );
 
 
+
             Square.UpdateConstants(FOV);
             Triangle.UpdateConstants(FOV);
             Mesh.UpdateConstants(FOV);
+            MeshModel.UpdateConstants(FOV);
         }
         protected override void Update(GameTime gameTime)
         {
@@ -523,10 +529,17 @@ namespace SlimeGame
                         );
                 }
             }
-            TargetMesh = new Mesh(meshIndeces.ToArray(), new (int, int, int)[]{ }, heightMap);
+            TargetMesh = new Mesh(
+                meshIndeces.ToArray(),
+                new (int, int, int)[] { },
+                heightMap,
+                Vector3.Zero,
+                Vector2.Zero
+                );
             TargetMesh.Draw(
                 ref _screenBuffer,
                 meshColors.ToArray(),
+                0.2f,
                 _player.EyePos,
                 _player.Angle.Y,
                 _player.Angle.X,
@@ -595,6 +608,14 @@ namespace SlimeGame
 
                 shape.Draw(ref _screenBuffer, _player.EyePos, _player.Angle.Y, _player.Angle.X, distance, Particle.Color);
             }
+            
+            MeshModel.DrawVertices(
+                ref _screenBuffer,
+                _player.EyePos,
+                _player.Angle.Y,
+                _player.Angle.X,
+                200
+                );
 
             /* FPS Counter */
             if (framesPerSecondTimer.Update())
