@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.GameAsset;
 using SlimeGame.Models.Shapes;
 
 namespace SlimeGame.Models
@@ -14,6 +15,8 @@ namespace SlimeGame.Models
     internal interface GenericModel
     {
         public Shape[] Shapes { get; }
+        public int[] Indeces { get; }
+        public VertexPositionColorNormal[] Vertices { get; }
         public BoundingBox BoundingBox { get; }
         public Color Color { get; set; }
         public Vector3 Position { get; set; }
@@ -21,6 +24,11 @@ namespace SlimeGame.Models
         {
             return null;
         }
+        public void Draw(WorldDraw draw, GraphicsDevice GraphicsDevice)
+        {
+            draw.DrawMesh(GraphicsDevice, Indeces, Vertices, 0, Vertices.Length);
+        }
+
         public void SetRotation(Vector3 pivot, float yaw, float pitch)
             => SetRotation(pivot, new Vector2(yaw, pitch));
         public void SetRotation(float yaw, float pitch)

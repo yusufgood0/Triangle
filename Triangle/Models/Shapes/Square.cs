@@ -24,10 +24,10 @@ namespace SlimeGame.Models.Shapes
         public Vector3 P4 { get => this._p4; set => this._p4 = value; }
         public Color Color { get; set; }
 
-        static readonly (int, int, int)[] triangleIndexes = new (int, int, int)[]
+        static readonly int[] triangleIndexes = new int[]
                 {
-                    (1, 2, 3),
-                    (1, 3, 4)
+                    1, 2, 3,
+                    1, 3, 4
                 };
         public Shape[] Triangles { get => Triangle.ModelConstructor(triangleIndexes, new Vector3[] { _p1, _p2, _p3, _p4 }, Color); }
         Vector3 Shape.Position => _p1;

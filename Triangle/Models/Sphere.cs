@@ -17,9 +17,25 @@ namespace SlimeGame.Models
         Shape[] GenericModel.Shapes => GetTriangles;
         Color GenericModel.Color { get => Color; set => Color = value; }
         Vector3 GenericModel.Position { get => Center; set => Center = value; }
+        VertexPositionColorNormal[] GenericModel.Vertices
+        {
+            get
+            {
+                VertexPositionColorNormal[] verts = new VertexPositionColorNormal[Vertices.Count];
+                for (int i = 0; i < Vertices.Count; i++)
+                {
+                    verts[i] = new VertexPositionColorNormal(
+                        Vertices[i],
+                        Color,
+                        Vector3.Normalize(Vertices[i] - Center));
+                }
+                return verts;
+            }
+        }
+        int[] GenericModel.Indeces => TriangleIndeces.ToArray();
 
         Color Color;
-        List<(int, int, int)> TriangleIndeces;
+        List<int> TriangleIndeces;
         List<Vector3> Vertices;
         Vector3 Center;
         float Radius;
@@ -84,13 +100,15 @@ namespace SlimeGame.Models
             int bottomVertexIndex = Vertices.Count - 1;
 
             // Create triangles List
-            TriangleIndeces = new List<(int, int, int)>();
+            TriangleIndeces = new List<int>();
 
             // Top cap triangles (connect to north pole)
             for (int i = 0; i < columns; i++)
             {
                 int next = (i + 1) % columns;
-                TriangleIndeces.Add((0, i + 1, next + 1));
+                TriangleIndeces.Add(0);
+                TriangleIndeces.Add(i + 1);
+                TriangleIndeces.Add(next + 1);
             }
 
             // Middle rows triangles
@@ -104,18 +122,14 @@ namespace SlimeGame.Models
                     int nextCol = (col + 1) % columns;
 
                     // First triangle of quad
-                    TriangleIndeces.Add((
-                        rowStart + nextCol,
-                        rowStart + col,
-                        nextRowStart + col
-                    ));
+                    TriangleIndeces.Add(rowStart + nextCol);
+                    TriangleIndeces.Add(rowStart + col);
+                    TriangleIndeces.Add(nextRowStart + col);
 
                     // Second triangle of quad
-                    TriangleIndeces.Add((
-                        nextRowStart + nextCol,
-                        rowStart + nextCol,
-                        nextRowStart + col
-                    ));
+                    TriangleIndeces.Add(nextRowStart + nextCol);
+                    TriangleIndeces.Add(rowStart + nextCol);
+                    TriangleIndeces.Add(nextRowStart + col);
                 }
             }
 
@@ -124,7 +138,9 @@ namespace SlimeGame.Models
             for (int i = 0; i < columns; i++)
             {
                 int next = (i + 1) % columns;
-                TriangleIndeces.Add((bottomVertexIndex, lastRowStart + next, lastRowStart + i));
+                TriangleIndeces.Add(bottomVertexIndex);
+                TriangleIndeces.Add(lastRowStart + next);
+                TriangleIndeces.Add(lastRowStart + i);
             }
         }
         public Vector3 Rotation(Vector3 vector, Vector3 pivotPoint, Vector2 rotation)
@@ -135,7 +151,7 @@ namespace SlimeGame.Models
             {
                 Vertices[vertexIndex] = Rotation(Vertices[vertexIndex], pivot, rotation - _rotation);
             }
-                Center = Rotation(Center, pivot, rotation - _rotation);
+            Center = Rotation(Center, pivot, rotation - _rotation);
             _rotation = rotation;
         }
         public void ChangeRotation(Vector3 pivot, Vector2 rotation)

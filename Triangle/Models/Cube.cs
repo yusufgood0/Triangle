@@ -1,5 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System.Linq;
+using System.Reflection.Metadata;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Graphics;
 using SlimeGame.GameAsset;
 using SlimeGame.Models.Shapes;
 
@@ -10,14 +13,51 @@ namespace SlimeGame.Models
         BoundingBox GenericModel.BoundingBox => new(Position, BRB);
         Shape[] GenericModel.Shapes => CreateSquares();
         Color GenericModel.Color { get => _color; set => _color = value; }
-        static (int, int, int)[] Triangles = new (int, int, int)[]
+
+        Vector3 GenericModel.Position { get => TLF; set => TLF = value; }
+        VertexPositionColorNormal[] GenericModel.Vertices
+        {
+            get
             {
-                (0, 1, 2), (1, 3, 2), // Front
-                (6, 5, 4), (6, 7, 5), // Back
-                (4, 1, 0), (4, 5, 1), // Top
-                (2, 3, 6), (3, 7, 6), // Bottom
-                (0, 2, 4), (2, 6, 4), // Left
-                (5, 3, 1), (5, 7, 3)  // Right
+                VertexPositionColorNormal[] verts = new VertexPositionColorNormal[Vertices.Length];
+                Vector3 center = Center;
+                for (int i = 0; i < Vertices.Length; i++)
+                {
+                    verts[i] = new VertexPositionColorNormal(
+                        Vertices[i],
+                        _color,
+                        Vector3.Normalize(Vertices[i] - center));
+                }
+                return verts;
+            }
+        }
+        Vector3[] Vertices
+        {
+            get => 
+                _rotation != Vector2.Zero 
+                ?
+                new Vector3[]
+                {
+                    Rotation(TLF), Rotation(TRF), Rotation(BLF), Rotation(BRF),
+                    Rotation(TLB), Rotation(TRB), Rotation(BLB), Rotation(BRB)
+                }
+                :
+                new Vector3[]
+                {
+                        TLF, TRF, BLF, BRF,
+                        TLB, TRB, BLB, BRB
+                };
+        }
+
+        int[] GenericModel.Indeces => Triangles;
+        static int[] Triangles = new int[]
+            {
+                0, 1, 2, 1, 3, 2, // Front
+                6, 5, 4, 6, 7, 5, // Back
+                4, 1, 0, 4, 5, 1, // Top
+                2, 3, 6, 3, 7, 6, // Bottom
+                0, 2, 4, 2, 6, 4, // Left
+                5, 3, 1, 5, 7, 3  // Right
             };
         static (int a, int b, int c, int d)[] Squares = new (int, int, int, int)[]
             {
@@ -58,7 +98,7 @@ namespace SlimeGame.Models
             this._ySize = ySize;
             this._zSize = zSize;
             this._color = color;
-            this._rotation = rotation == new Vector2() ? Vector2.Zero: rotation;
+            this._rotation = rotation == new Vector2() ? Vector2.Zero : rotation;
         }
         public Shape[] GetTriangles
         {

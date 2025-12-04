@@ -78,9 +78,8 @@ namespace SlimeGame.GameAsset
         {
             _model.Color = new Color(rnd.Next(100, 255), rnd.Next(0, 60), 0);
 
-            Color color = _model.Color;
-            var particle = new SquareParticle(_position, color, _velocity);
-            particle.Float(rnd.Next(5, 50));
+            var particle = new SquareParticle(_position, _model.Color, _velocity, rnd);
+            particle.Float(rnd.Next(5, 50), rnd);
             return particle;
         }
         public SquareParticle[] HitGround(Random rnd)
@@ -89,8 +88,8 @@ namespace SlimeGame.GameAsset
             for (int i = 0; i < returnValue.Count(); i++)
             {
                 Vector3 particlePos = _position + new Vector3(rnd.Next(-ExplosionSize, ExplosionSize), rnd.Next(-ExplosionSize, ExplosionSize), rnd.Next(-ExplosionSize, ExplosionSize));
-                returnValue[i] = new SquareParticle(particlePos, _model.Color, (particlePos - _position) / 10);
-                returnValue[i].Float(200);
+                returnValue[i] = new SquareParticle(particlePos, _model.Color, (particlePos - _position) / 10, rnd);
+                returnValue[i].Float(200, rnd);
             }
             return returnValue;
         }

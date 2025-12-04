@@ -22,7 +22,7 @@ namespace SlimeGame.GameAsset
 
         // Matrices
         public Matrix ViewMatrix { get; private set; }
-        public Matrix FieldOfViewMatrix { get; private set; }
+        public Matrix ProjectionMatrix { get; private set; }
         public BoundingFrustum Frustum { get; private set; }
 
         public Camera(float aspectRatio, Vector3 position, Vector3 forward, Vector3 upVector, float viewDistance, float FOV = MathHelper.PiOver4)
@@ -50,7 +50,7 @@ namespace SlimeGame.GameAsset
 
         public void UpdateProjectionMatrix()
         {
-            FieldOfViewMatrix = Matrix.CreatePerspectiveFieldOfView(FieldOfView, AspectRatio, NearClipPlane, FarClipPlane);
+            ProjectionMatrix = Matrix.CreatePerspectiveFieldOfView(FieldOfView, AspectRatio, NearClipPlane, FarClipPlane);
             // Rebuild the frustum whenever the projection changes
             RecreateFrustum();
         }
@@ -58,7 +58,7 @@ namespace SlimeGame.GameAsset
         private void RecreateFrustum()
         {
             // The frustum is built from the combined view and projection matrices
-            Matrix viewProjection = ViewMatrix * FieldOfViewMatrix;
+            Matrix viewProjection = ViewMatrix * ProjectionMatrix;
             Frustum = new BoundingFrustum(viewProjection);
         }
         public void Move(Vector3 translation)

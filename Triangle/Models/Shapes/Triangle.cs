@@ -183,20 +183,20 @@ namespace SlimeGame.Models.Shapes
             // mix colors based on the difference in rays
             return Color.Lerp(triangleColor, lightColor, dotProduct / 2);
         }
-        public unsafe static Shape[] ModelConstructor((int, int, int)[] Triangles, Vector3[] Vertices, Color color)
+        public unsafe static Shape[] ModelConstructor(int[] Triangles, Vector3[] Vertices, Color color)
         {
             Shape[] ProcessedTriangles = new Shape[Triangles.Length];
             fixed (Shape* processedTrianglesPtr = ProcessedTriangles)
-            fixed ((int, int, int)* trianglesPtr = Triangles)
+            fixed (int* trianglesPtr = Triangles)
             fixed (Vector3* verticesPtr = Vertices)
             {
                 // Process each triangle and construct Triangle objects
-                for (int i = 0; i < Triangles.Length; i++)
+                for (int i = 0; i < Triangles.Length; i+=3)
                 {
-                    processedTrianglesPtr[i] = new Triangle(
-                        verticesPtr[trianglesPtr[i].Item1],
-                        verticesPtr[trianglesPtr[i].Item2],
-                        verticesPtr[trianglesPtr[i].Item3],
+                    processedTrianglesPtr[i/3] = new Triangle(
+                        verticesPtr[trianglesPtr[i]],
+                        verticesPtr[trianglesPtr[i+1]],
+                        verticesPtr[trianglesPtr[i+2]],
                         color
                     );
                 }
