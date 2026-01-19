@@ -34,6 +34,8 @@ namespace SlimeGame.Input
         public KeyboardState PreviousKeyboardState;
         public GamePadState GamePadState;
         public GamePadState PreviousGamePadState;
+        public MouseState MouseState;
+        public MouseState PreviousMouseState;
         public Dictionary<KeybindActions, Keybind> Keybinds = new();
         static readonly Buttons[] AllButtons = (Buttons[])Enum.GetValues(typeof(Buttons));
         public MasterInput()
@@ -93,6 +95,18 @@ namespace SlimeGame.Input
             }
             return pressedButtons.ToArray();
         }
+        public bool OnRightReleased
+            => (MouseState.RightButton == ButtonState.Released && PreviousMouseState.RightButton == ButtonState.Pressed);
+        
+        public bool OnRightPress
+            => (MouseState.RightButton == ButtonState.Pressed && PreviousMouseState.RightButton == ButtonState.Released);
+        
+        public bool OnLeftReleased
+            => (MouseState.LeftButton == ButtonState.Released && PreviousMouseState.LeftButton == ButtonState.Pressed);
+        
+        public bool OnLeftPress
+            => (MouseState.LeftButton == ButtonState.Pressed && PreviousMouseState.LeftButton == ButtonState.Released);
+        
 
         public bool OnPress(KeybindActions Action) =>
             Keybinds[Action].OnPressed(this);
@@ -100,18 +114,22 @@ namespace SlimeGame.Input
             Keybinds[Action].OnReleased(this);
         public bool IsPressed(KeybindActions Action) =>
             Keybinds[Action].IsPressed(this);
+
         public bool OnPress(Keys key) =>
             KeyboardState.IsKeyDown(key) && PreviousKeyboardState.IsKeyUp(key);
         public bool OnRelease(Keys key) =>
             KeyboardState.IsKeyUp(key) && PreviousKeyboardState.IsKeyDown(key);
         public bool IsPressed(Keys key) =>
             KeyboardState.IsKeyDown(key);
+
         public bool OnPress(Buttons button) =>
             GamePadState.IsButtonDown(button) && GamePadState.IsButtonUp(button);
         public bool OnRelease(Buttons button) =>
             GamePadState.IsButtonUp(button) && GamePadState.IsButtonDown(button);
         public bool IsPressed(Buttons button) =>
             GamePadState.IsButtonDown(button);
+
+
         public void ChangeKeybind(KeybindActions Action, Buttons newButton)
         {
             Keybinds[Action] = new Keybind(Keybinds[Action].KeyboardKey, newButton);

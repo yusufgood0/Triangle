@@ -1,22 +1,76 @@
-﻿using Microsoft.Xna.Framework;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
+using SlimeGame.GameAsset;
+using SlimeGame.GameAsset.IFrames;
+using SlimeGame.GameAsset.Projectiles;
 using SlimeGame.Generation;
 using SlimeGame.Models;
 using SlimeGame.Models.Shapes;
-using SlimeGame.GameAsset;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace SlimeGame.Enemies
 {
-    internal interface Enemy
+    internal abstract class Enemy
     {
-        public void Update(in Player player, in List<Projectile> projectiles, in Random rnd, SeedMapper seedMap, int MapCellSize);
-        public void Knockback(Vector3 position);
-        public void EnemyHitPlayer(ref Player player);
-        public void EnemyIsHit(ref Player player, Vector3 source, int amount);
+        static Random rnd = new Random();
+        public abstract void SetPosition(Vector3 vector);
+        public virtual void Update(ObjectManager objectManager, Random rnd)
+        {
+            LerpRotation(objectManager.Player.Position);
+        }
+        protected void LerpRotation(Vector3 target)
+        {
+            Vector2 difference = -new Vector2(_position.X - target.X, _position.Z - target.Z);
+            float newYaw = -MathF.Atan2(difference.Y, difference.X) + MathF.PI / 2;
+            float delta = newYaw - _yaw;
+            float maxStep = MathF.Abs(delta) * 0.03f;
+            _yaw += Math.Clamp(delta, -maxStep, maxStep);
+            _pitch = MathF.Atan2(_position.Y - target.Y, difference.Length());
+        }
+        public void Knockback(Vector3 dir, float amount)
+        {
+            if (dir == Vector3.Zero)
+                return;
+            _speed += Vector3.Normalize(dir) * KnockbackMultiplier * amount;
+        }
+        public void ImmuneFor(float duration)
+        {
+            ImmuneUntill = Game1.PlayingGameTime.AddSeconds(duration);
+        }
+        public virtual bool EnemyIsHit(float amount, ObjectManager objectManager)
+            => EnemyIsHit(Position - objectManager.Player.Position, amount, objectManager);
+        public virtual bool EnemyIsHit(Vector3 knockbackDir, float amount, ObjectManager objectManager)
+        {
+            if (IsImmune) return false;
+
+            Player player = objectManager.Player;
+            this.Knockback(knockbackDir, amount);
+            _health -= amount;
+            if (Health <= 0)
+            {
+                player.LevelManager.AddExp(this.MaxHealth);
+                objectManager.Enemies.Remove(this);
+
+                for (int i = 0; i < rnd.Next(15, 20); i++)
+                {
+                    Vector3 randomVector = new Vector3(rnd.Next(-20, 20), rnd.Next(-20, 20), rnd.Next(-20, 20));
+                    objectManager.Add(new Particle(Position, models[0].Color, player.Speed + randomVector, rnd));
+                }
+                return true;
+            }
+            return false;
+        }
+        public void EnemyHitPlayer(Player player)
+        {
+            Vector3 knockback = Vector3.Normalize(player.Position - Position) * KnockbackMultiplier + Vector3.Up * 5;
+            IFrameInstance iFrameInstance = new IFrameInstance(this, IFrameDuration, iFrameType);
+            player.TakeDamage(iFrameInstance, knockback, Damage);
+        }
         public static bool CheckLineOfSight(Vector3 Pos1, Vector3 Pos2, ref BoundingBox[] collisionObject)
         {
             float distance = Vector3.Distance(Pos1, Pos2);
@@ -73,14 +127,32 @@ namespace SlimeGame.Enemies
 
             return healthBar;
         }
-        const int HealthBarSize = 400;
-        const int HealthBarHeight = 100;
-        public BoundingBox BoundingBox { get; }
-        public BoundingBox Hitbox { get; }
-        public GenericModel[] models { get; }
-        public Vector3 Position { get; }
-        public int Health { get; }
-        public int MaxHealth { get; }
-        public int Height { get; }
+        protected const int HealthBarSize = 400;
+        protected const int HealthBarHeight = 100;
+        public abstract BoundingBox BoundingBox { get; }
+        public abstract BoundingBox Hitbox { get; }
+        public abstract BoundingBox Hurtbox { get; }
+        public abstract GenericModel[] models { get; }
+        public abstract float Health { get; }
+        public abstract int Height { get; }
+        public abstract Vector3 Position { get; }
+        public abstract IFrameType iFrameType { get; }
+        protected abstract int MaxHealth { get; }
+        protected abstract float KnockbackMultiplier { get; }
+        protected abstract float Damage { get; }
+        protected abstract float IFrameDuration { get; }
+        protected double TimeSinceLastMove => (Game1.PlayingGameTime - MovementTimer).TotalSeconds;
+        public bool IsImmune => Game1.PlayingGameTime < ImmuneUntill;
+        protected Vector2 Rotation => new Vector2(_yaw, _pitch);
+        protected Vector3 _speed;
+        protected Vector3 _position;
+        protected float _health;
+        protected private GenericModel[] _model = new GenericModel[1];
+        protected private BoundingBox _hitbox;
+        protected private BoundingBox _hurtbox;
+        protected DateTime MovementTimer = Game1.PlayingGameTime;
+        private DateTime ImmuneUntill;
+        protected float _yaw = 0;
+        protected float _pitch = 0;
     }
 }

@@ -49,7 +49,7 @@ namespace SlimeGame.Menus
 
                 if (SelectedMenuButton % 2 == 1)
                 {
-                    actionToRebind = (KeybindActions)(SelectedMenuButton % GetButtonCount() / 2);
+                    actionToRebind = (KeybindActions)(SelectedMenuButton % GetButtonCount / 2);
                     pressedButtons = input.PressedButtons();
 
                     if (pressedButtons.Length > 0)
@@ -64,7 +64,7 @@ namespace SlimeGame.Menus
                 }
                 else
                 {
-                    actionToRebind = (KeybindActions)(SelectedMenuButton % GetButtonCount() / 2);
+                    actionToRebind = (KeybindActions)(SelectedMenuButton % GetButtonCount / 2);
                     pressedKeys = input.PressedKeys();
 
                     if (pressedKeys.Length > 0)
@@ -81,7 +81,7 @@ namespace SlimeGame.Menus
             else if (mouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed)
             {
                 SelectedMenuButton = GetBehaviorValue(previousMouseState, mouseState);
-                Debug.WriteLine(SelectedMenuButton);
+                // debug.writeline(SelectedMenuButton);
                 return;
             }
         }

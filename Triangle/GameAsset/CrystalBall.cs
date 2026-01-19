@@ -65,8 +65,8 @@ namespace SlimeGame.GameAsset
 
             /* Background color of orb */
             Color backGroundColor = BackGroundColor * _colorValue;
-
-            /* Iterates and draws each triangle in the orb */
+            backGroundColor.A = 150;
+            /* Iterates and colors each triangle in the orb */
             for (int i = 0; i < Vertices.Length; i++)
             {
                 int columns = SphereQuality + 1;

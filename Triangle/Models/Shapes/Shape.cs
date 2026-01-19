@@ -24,7 +24,7 @@ namespace SlimeGame.Models.Shapes
             Color color
             )
         {
-            Debug.WriteLine("this is interface Code, It Should not run");
+            // debug.writeline("this is interface Code, It Should not run");
         }
         public Color ApplyShading(Vector3 lightDirection, Color triangleColor, Color lightColor)
         {

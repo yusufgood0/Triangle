@@ -21,7 +21,7 @@ namespace SlimeGame
             if (RunTime >= 1)
             {
                 FPS = callCount;
-                startTime = DateTime.Now;
+                startTime = Game1.PlayingGameTime;
                 callCount = 0;
                 return true;
             }
@@ -33,6 +33,6 @@ namespace SlimeGame
             return CheckForReset();
         }
 
-        double RunTime { get => (DateTime.Now - startTime).TotalSeconds; }
+        double RunTime { get => (Game1.PlayingGameTime - startTime).TotalSeconds; }
     }
 }

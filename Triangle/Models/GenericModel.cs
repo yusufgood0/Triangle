@@ -14,7 +14,6 @@ namespace SlimeGame.Models
 {
     internal interface GenericModel
     {
-        public Shape[] Shapes { get; }
         public int[] Indeces { get; }
         public VertexPositionColorNormal[] Vertices { get; }
         public BoundingBox BoundingBox { get; }
@@ -37,7 +36,7 @@ namespace SlimeGame.Models
             => SetRotation(Position, rotation);
         public void SetRotation(Vector3 pivot, Vector2 rotation)
         {
-            Debug.WriteLine("GenericModel.SetRotation called - no implementation: " + this.GetType());
+            // debug.writeline("GenericModel.SetRotation called - no implementation: " + this.GetType());
         }
         public void ChangeRotation(Vector3 pivot, float yaw, float pitch)
             => ChangeRotation(pivot, new Vector2(yaw, pitch));
@@ -47,7 +46,7 @@ namespace SlimeGame.Models
             => ChangeRotation(Position, rotation);
         public void ChangeRotation(Vector3 pivot, Vector2 rotation)
         {
-            Debug.WriteLine("GenericModel.ChangeRotation called - no implementation: " + this.GetType());
+            // debug.writeline("GenericModel.ChangeRotation called - no implementation: " + this.GetType());
         }
     }
 }

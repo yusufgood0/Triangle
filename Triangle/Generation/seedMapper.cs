@@ -69,7 +69,7 @@ namespace SlimeGame.Generation
         {
             int xPlus1 = x + 1;
             int yPlus1 = y + 1;
-            if (x <= 0 || y <= 0 || x >= width-2 || y >= height-2)
+            if (x <= 0 || y <= 0 || x >= width - 2 || y >= height - 2)
             {
                 return Vector3.Down;
             }
@@ -90,7 +90,6 @@ namespace SlimeGame.Generation
 
             Vector3 normalDir = (normalDir1 + normalDir2) / 2;
             return normalDir;
-
         }
         private int CountLandNeighbhors(int x, int y)
         {
@@ -139,12 +138,12 @@ namespace SlimeGame.Generation
         public void BezierSmoother(int Radius,
             float x0, float x1, float x2, float x3,
             float y0, float y1, float y2, float y3,
+            Random rnd,
             int softMaxHeight = 1000,
             int landVarianceMin = 30,
             int landVarianceMax = 40
             )
         {
-            Random rnd = new Random();
             int lasty = int.MinValue, lastx = int.MinValue;
             for (float t = 0; t <= 1; t += 0.01f)
             {
@@ -156,7 +155,7 @@ namespace SlimeGame.Generation
                 //make it so it doesent make a mound if it was too close to the last point
             }
         }
-        public void ApplySeaLevel(int seaLevel)
+        public void ApplySeaLevel(int seaLevel, int seaLevelVariance)
         {
             for (int x = 0; x < width; x++)
             {
@@ -165,6 +164,7 @@ namespace SlimeGame.Generation
                     if (Heights[x, y] > seaLevel)
                     {
                         Values[x, y] = 0;
+                        Heights[x, y] = seaLevel + (int)((random.NextDouble() - 0.5) * seaLevelVariance);
                     }
                     else
                     {
@@ -191,7 +191,6 @@ namespace SlimeGame.Generation
                 }
             }
         }
-
         public void SmoothenHeights(int Level)
         {
             int[,] newHeights = new int[width, height];
@@ -200,7 +199,7 @@ namespace SlimeGame.Generation
             int LowRange = -Level;
             int HighRange = Level + 1;
             int amountPerCheck = Level * 2 + 1;
-            int average = 0;
+            int average;
 
             for (int x = 0; x < width; x++)
             {
@@ -277,6 +276,71 @@ namespace SlimeGame.Generation
                 return Heights[playerXIndex, playerYIndex];
             }
             return int.MinValue; //outside of map
+        }
+
+        public VertexPositionColorNormal[] GetVertices(int MapCellSize, Color[] Colors)
+        {
+            var MapVertexPositionColorNormal = new VertexPositionColorNormal[height * width];
+
+            //assigns positions and colors
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int index = y * width + x;
+
+                    MapVertexPositionColorNormal[index].Position = new Vector3(
+                        x * MapCellSize,
+                        Heights[x, y],
+                        y * MapCellSize
+                        );
+                    Color color = Colors[Values[x, y]] * (float)(random.NextDouble() * 0.1f + 0.2f);
+                    color.A = 255;
+                    MapVertexPositionColorNormal[index].Color = color;
+                }
+            }
+            //assigns normals
+            for (int y = 0; y < height - 1; y++)
+            {
+                for (int x = 0; x < width - 1; x++)
+                {
+                    int index = y * width + x;
+
+                    // finds the four points of the quad
+                    Vector3 p1 = MapVertexPositionColorNormal[index].Position;
+                    Vector3 p2 = MapVertexPositionColorNormal[index + 1].Position;
+                    Vector3 p3 = MapVertexPositionColorNormal[index + 1 + width].Position;
+                    Vector3 p4 = MapVertexPositionColorNormal[index + width].Position;
+
+                    // finds normal direction
+                    Vector3 side1 = p2 - p1;
+                    Vector3 side2 = p3 - p1;
+                    Vector3 side3 = p4 - p1;
+
+                    Vector3 normalDir1 = Vector3.Cross(side1, side2);
+                    normalDir1.Normalize();
+
+                    Vector3 normalDir2 = Vector3.Cross(side2, side3);
+                    normalDir2.Normalize();
+
+                    Vector3 normalDir = (normalDir1 + normalDir2) / 2;
+
+                    // assigns normals to each vertex
+                    MapVertexPositionColorNormal[index].Normal = normalDir;
+                }
+            }
+            for (int y = 1; y < height; y++)
+            {
+                int n = y * width - 1;
+                MapVertexPositionColorNormal[n].Normal = MapVertexPositionColorNormal[n - 1].Normal;
+            }
+            for (int x = 0; x < width; x++)
+            {
+                int n = (width-1) * height;
+                MapVertexPositionColorNormal[n + x].Normal = MapVertexPositionColorNormal[n + x - 1*height].Normal;
+            }
+
+            return MapVertexPositionColorNormal;
         }
     }
 }

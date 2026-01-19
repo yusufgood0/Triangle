@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.Enemies;
 using SlimeGame.Models;
 
 namespace SlimeGame.GameAsset
@@ -15,7 +16,7 @@ namespace SlimeGame.GameAsset
     internal class WorldDraw
     {
 
-        public BasicEffect basicEffect;
+        public BasicEffect BasicEffect;
         VertexPositionTexture[] TextureVertices;
         static readonly short[] TwoSidedQuadIndices = new short[] { 0, 1, 2, 2, 3, 0 };
         static readonly Vector2 TL = new Vector2(0, 0); // TL
@@ -23,13 +24,13 @@ namespace SlimeGame.GameAsset
         static readonly Vector2 BR = new Vector2(1, 1); // BR
         static readonly Vector2 BL = new Vector2(0, 1); // BL
 
-        public Matrix World { get => basicEffect.World; set => basicEffect.World = value; }
-        public Matrix View { get => basicEffect.View; set => basicEffect.View = value; }
-        public Matrix Projection { get => basicEffect.Projection; set => basicEffect.Projection = value; }
-        public Texture2D Texture { get => basicEffect.Texture; set => basicEffect.Texture = value; }
-        public WorldDraw(GraphicsDevice graphicsDevice, bool doubleSided, Texture2D? texture = null, Matrix? world = null, Matrix? view = null, Matrix? projection = null)
+        public Matrix World { get => BasicEffect.World; set => BasicEffect.World = value; }
+        public Matrix View { get => BasicEffect.View; set => BasicEffect.View = value; }
+        public Matrix Projection { get => BasicEffect.Projection; set => BasicEffect.Projection = value; }
+        public Texture2D Texture { get => BasicEffect.Texture; set => BasicEffect.Texture = value; }
+        public WorldDraw(GraphicsDevice graphicsDevice, bool doubleSided, float? daylightTime = null, Texture2D? texture = null, Matrix? world = null, Matrix? view = null, Matrix? projection = null)
         {
-            basicEffect = new BasicEffect(graphicsDevice)
+            BasicEffect = new BasicEffect(graphicsDevice)
             {
                 TextureEnabled = texture != null,
                 Texture = texture != null ? texture : null,
@@ -72,51 +73,122 @@ namespace SlimeGame.GameAsset
                 graphicsDevice.DepthStencilState = DepthStencilState.Default;
             }
 
-            basicEffect.VertexColorEnabled = true;
+            float DayLightTime1 = daylightTime + 0.0f ?? 0.3f;
+            float DayLightTime2 = daylightTime + 0.1f ?? 0.3f;
+            float DayLightTime3 = daylightTime + 0.2f ?? 0.3f;
 
-            // Depth test on
-            // If you want to show both sides:
+            BasicEffect.VertexColorEnabled = true;
+            BasicEffect.FogEnabled = true;
+            BasicEffect.FogColor = Color.Black.ToVector3();
+            BasicEffect.Alpha = 1.0f;
+            BasicEffect.PreferPerPixelLighting = false;
+            BasicEffect.LightingEnabled = true;
+            BasicEffect.CurrentTechnique = BasicEffect.Techniques[1];
+            BasicEffect.AmbientLightColor = Color.Red.ToVector3();
+            BasicEffect.EnableDefaultLighting();
+            BasicEffect.DirectionalLight0.Enabled = true;
+            BasicEffect.DirectionalLight1.Enabled = true;
+            BasicEffect.DirectionalLight2.Enabled = true;
+            BasicEffect.DirectionalLight0.Direction = SkyColorGenerator.GetSkyDirection(DayLightTime1);
+            BasicEffect.DirectionalLight1.Direction = SkyColorGenerator.GetSkyDirection(DayLightTime2);
+            BasicEffect.DirectionalLight2.Direction = SkyColorGenerator.GetSkyDirection(DayLightTime3);
+            if (TimeSinceLastColorBlinkStarted < secondsPerBlink)
+            {
+                BasicEffect.DirectionalLight0.DiffuseColor = _blinkColor1;
+                BasicEffect.DirectionalLight1.DiffuseColor = _blinkColor2;
+                BasicEffect.DirectionalLight2.DiffuseColor = _blinkColor3;
+                BasicEffect.FogStart = _blinkFogStart;
+                BasicEffect.FogEnd = _blinkFogEnd;
+            }
+            else
+            {
+                BasicEffect.DirectionalLight0.DiffuseColor = SkyColorGenerator.GetSkyColor(DayLightTime1).ToVector3();
+                BasicEffect.DirectionalLight1.DiffuseColor = SkyColorGenerator.GetSkyColor(DayLightTime2).ToVector3();
+                BasicEffect.DirectionalLight2.DiffuseColor = SkyColorGenerator.GetSkyColor(DayLightTime3).ToVector3();
+                BasicEffect.FogStart = _baseFogStart;
+                BasicEffect.FogEnd = _baseFogEnd;
+            }
+            BasicEffect.DiffuseColor = Vector3.One;
+            BasicEffect.SpecularPower = 1000f;
+            BasicEffect.SpecularColor = Vector3.One;
+            BasicEffect.EmissiveColor = Vector3.Zero;
+        }
+        public Vector3 Color1 { get => BasicEffect.DirectionalLight0.DiffuseColor; set => BasicEffect.DirectionalLight0.DiffuseColor = value; }
+        public Vector3 Color2 { get => BasicEffect.DirectionalLight1.DiffuseColor; set => BasicEffect.DirectionalLight1.DiffuseColor = value; }
+        public Vector3 Color3 { get => BasicEffect.DirectionalLight2.DiffuseColor; set => BasicEffect.DirectionalLight2.DiffuseColor = value; }
+        static DateTime _timeWhenColorBlinkStarted = DateTime.MinValue;
+        static float TimeSinceLastColorBlinkStarted => (float)(Game1.PlayingGameTime - _timeWhenColorBlinkStarted).TotalSeconds;
+        const float secondsPerBlink = 0.4f;
+        static bool IsBlinking = TimeSinceLastColorBlinkStarted < secondsPerBlink;
+        static Vector3 BaseColor1 => Color.White.ToVector3() * lightStrength;
+        static Vector3 BaseColor2 => Color.PaleGreen.ToVector3() * lightStrength;
+        static Vector3 BaseColor3 => Color.LightSeaGreen.ToVector3() * lightStrength;
+        static Vector3 _blinkColor1 = new Vector3(-1, -1, -1);
+        static Vector3 _blinkColor2 = new Vector3(-1, -1, -1);
+        static Vector3 _blinkColor3 = new Vector3(-1, -1, -1);
+        const int _baseFogStart = 100;
+        const int _baseFogEnd = 10000;
+        const int _blinkFogStart = 10;
+        const int _blinkFogEnd = 1000;
+        const float lightStrength = 0.05f;
+
+        public static void BlinkColors(Vector3 targetColor1, Vector3 targetColor2, Vector3 targetColor3)
+        {
+            _timeWhenColorBlinkStarted = Game1.PlayingGameTime;
+
+            _blinkColor1 = targetColor1;
+            _blinkColor2 = targetColor2;
+            _blinkColor3 = targetColor3;
+
         }
         public void SetWorld(Matrix world)
         {
-            basicEffect.World = world;
+            BasicEffect.World = world;
         }
         public void SetView(Matrix view)
         {
-            basicEffect.View = view;
+            BasicEffect.View = view;
         }
         public void SetProjection(Matrix projection)
         {
-            basicEffect.Projection = projection;
+            BasicEffect.Projection = projection;
         }
         public void SetTexture(Texture2D texture)
         {
-            basicEffect.Texture = texture;
-            basicEffect.TextureEnabled = true;
+            BasicEffect.Texture = texture;
+            BasicEffect.TextureEnabled = true;
         }
         public void DisableTexture()
         {
-            basicEffect.TextureEnabled = false;
+            BasicEffect.TextureEnabled = false;
+        }
+        public void EnableDefaultLighting()
+        {
+            BasicEffect.LightingEnabled = true;
+        }
+        public void DisableDefaultLighting()
+        {
+            BasicEffect.LightingEnabled = false;
         }
         public void EnableTexture()
         {
-            basicEffect.TextureEnabled = true;
+            BasicEffect.TextureEnabled = true;
         }
-        public void DrawQuad(GraphicsDevice graphicsDevice, Vector3[] Vertices, Texture2D texture)
+        public void DrawQuad(GraphicsDevice graphicsDevice, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4, Texture2D texture)
         {
             SetTexture(texture);
 
-            foreach (var pass in basicEffect.CurrentTechnique.Passes)
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 graphicsDevice.DrawUserIndexedPrimitives<VertexPositionTexture>(
                     PrimitiveType.TriangleList,
                     new VertexPositionTexture[]
                     {
-                    new VertexPositionTexture(Vertices[0], TL), // TL
-                    new VertexPositionTexture(Vertices[1], TR), // TR
-                    new VertexPositionTexture(Vertices[2], BR), // BR
-                    new VertexPositionTexture(Vertices[3], BL), // BL
+                    new VertexPositionTexture(p1, TL), // TL
+                    new VertexPositionTexture(p2, TR), // TR
+                    new VertexPositionTexture(p3, BR), // BR
+                    new VertexPositionTexture(p4, BL), // BL
                     },
                     0,
                     4,
@@ -126,21 +198,21 @@ namespace SlimeGame.GameAsset
                 );
             }
         }
-        public void DrawQuad(GraphicsDevice graphicsDevice, Vector3[] Vertices, Color color)
+        public void DrawQuad(GraphicsDevice graphicsDevice, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4, Color color, bool useLight = false)
         {
             DisableTexture();
-
-            foreach (var pass in basicEffect.CurrentTechnique.Passes)
+            BasicEffect.LightingEnabled = useLight;
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 graphicsDevice.DrawUserIndexedPrimitives<VertexPositionColor>(
                     PrimitiveType.TriangleList,
                     new VertexPositionColor[]
                     {
-                    new VertexPositionColor(Vertices[0], color), // TL
-                    new VertexPositionColor(Vertices[1], color), // TR
-                    new VertexPositionColor(Vertices[2], color), // BR
-                    new VertexPositionColor(Vertices[3], color), // BL
+                    new VertexPositionColor(p1, color), // TL
+                    new VertexPositionColor(p2, color), // TR
+                    new VertexPositionColor(p3, color), // BR
+                    new VertexPositionColor(p4, color), // BL
                     },
                     0,
                     4,
@@ -149,21 +221,22 @@ namespace SlimeGame.GameAsset
                     2
                 );
             }
+            BasicEffect.LightingEnabled = true;
         }
-        public void DrawTriangle(GraphicsDevice graphicsDevice, Vector3[] Vertices, Color color)
+        public void DrawTriangle(GraphicsDevice graphicsDevice, Vector3 p1, Vector3 p2, Vector3 p3, Color color, bool useLight = false)
         {
             DisableTexture();
-
-            foreach (var pass in basicEffect.CurrentTechnique.Passes)
+            BasicEffect.LightingEnabled = useLight;
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 graphicsDevice.DrawUserIndexedPrimitives<VertexPositionColor>(
                     PrimitiveType.TriangleList,
                     new VertexPositionColor[]
                     {
-                    new VertexPositionColor(Vertices[0], color), // TL
-                    new VertexPositionColor(Vertices[1], color), // TR
-                    new VertexPositionColor(Vertices[2], color), // BR
+                    new VertexPositionColor(p1, color), // TL
+                    new VertexPositionColor(p2, color), // TR
+                    new VertexPositionColor(p3, color), // BR
                     },
                     0,
                     3,
@@ -172,6 +245,7 @@ namespace SlimeGame.GameAsset
                     1
                 );
             }
+            BasicEffect.LightingEnabled = true;
         }
         public void DrawMesh(GraphicsDevice graphicsDevice, int[] indices, Vector3[] vertices, Vector3[] Normals, Color[] colors)
         {
@@ -183,7 +257,7 @@ namespace SlimeGame.GameAsset
                 vertexPositions[i] = new VertexPositionColorNormal(vertices[i], colors[i], Normals[i]);
             }
 
-            foreach (var pass in basicEffect.CurrentTechnique.Passes)
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 graphicsDevice.DrawUserIndexedPrimitives<VertexPositionColorNormal>(
@@ -193,14 +267,30 @@ namespace SlimeGame.GameAsset
                     vertexPositions.Count(),
                     indices,
                     0,
-                    indices.Count()/3
+                    indices.Count() / 3
+                );
+            }
+        }
+        public void DrawMesh(GraphicsDevice graphicsDevice, int[] indices, VertexPositionColorNormalTexture[] vertexPositions, int vertexOffset, int numVertices)
+        {
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                graphicsDevice.DrawUserIndexedPrimitives<VertexPositionColorNormalTexture>(
+                    PrimitiveType.TriangleList,
+                    vertexPositions,
+                    vertexOffset,
+                    numVertices,
+                    indices,
+                    0,
+                    indices.Count() / 3
                 );
             }
         }
         public void DrawMesh(GraphicsDevice graphicsDevice, int[] indices, VertexPositionColorNormal[] vertexPositions, int vertexOffset, int numVertices)
         {
             DisableTexture();
-            foreach (var pass in basicEffect.CurrentTechnique.Passes)
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 graphicsDevice.DrawUserIndexedPrimitives<VertexPositionColorNormal>(
@@ -217,7 +307,7 @@ namespace SlimeGame.GameAsset
         public void DrawMesh(GraphicsDevice graphicsDevice, int[] indices, VertexPositionColor[] vertexPositions, int vertexOffset, int numVertices)
         {
             DisableTexture();
-            foreach (var pass in basicEffect.CurrentTechnique.Passes)
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
                 graphicsDevice.DrawUserIndexedPrimitives<VertexPositionColor>(
@@ -228,6 +318,122 @@ namespace SlimeGame.GameAsset
                     indices,
                     0,
                     indices.Count() / 3
+                );
+            }
+        }
+        public void DrawModel(GraphicsDevice GraphicsDevice, Model Model) { DrawModel(GraphicsDevice, Model, Matrix.Identity); }
+        public void DrawModel(GraphicsDevice GraphicsDevice, Model Model, Matrix WorldMatrix)
+        {
+            Matrix storedWorld = BasicEffect.World;
+            foreach (var mesh in Model.Meshes)
+            {
+                foreach (var part in mesh.MeshParts)
+                {
+                    part.Effect = BasicEffect;
+                }
+                foreach (BasicEffect effect in mesh.Effects)
+                {
+                    effect.World = WorldMatrix * BasicEffect.World;
+                }
+                mesh.Draw();
+            }
+            BasicEffect.World = storedWorld;
+        }
+        public void DrawPositionMarker(
+                    GraphicsDevice GraphicsDevice,
+                    Vector3 pos,
+                    float size,
+                    Color color
+                    )
+        {
+            short[] indeces = new short[]
+            {
+                0,1,2, 2,3,0, // Top
+                4,5,6, 6,7,4, // Bottom
+                0,1,5, 5,4,0, // Front
+                2,3,7, 7,6,2, // Back
+                1,2,6, 6,5,1, // Right
+                3,0,4, 4,7,3  // Left
+            };
+            float HalfSize = size / 2f;
+
+            Vector3[] vertices = new Vector3[8]
+            {
+                // Front face (Z -)
+                pos + new Vector3(-HalfSize, -HalfSize, -HalfSize), // front-bottom-left
+                pos + new Vector3(HalfSize, -HalfSize, -HalfSize), // front-bottom-right
+                pos + new Vector3(HalfSize, HalfSize, -HalfSize), // front-top-right
+                pos + new Vector3(-HalfSize, HalfSize, -HalfSize), // front-top-left
+
+                // Back face (Z +)
+                pos + new Vector3(-HalfSize, -HalfSize, HalfSize), // back-bottom-left
+                pos + new Vector3(HalfSize, -HalfSize, HalfSize), // back-bottom-right
+                pos + new Vector3(HalfSize, HalfSize, HalfSize), // back-top-right
+                pos + new Vector3(-HalfSize, HalfSize, HalfSize), // back-top-left
+            };
+
+            DisableTexture();
+            DisableDefaultLighting();
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawUserIndexedPrimitives<VertexPositionColor>(
+                    PrimitiveType.TriangleList,
+                    Array.ConvertAll(vertices, i => new VertexPositionColor(i, color)),
+                    0,
+                    vertices.Length,
+                    indeces,
+                    0,
+                    indeces.Length / 3
+                );
+            }
+            EnableDefaultLighting();
+
+        }
+        public void DrawPositionMarker(
+                    GraphicsDevice GraphicsDevice,
+                    Vector3 min,
+                    Vector3 max,
+                    Color color
+                    )
+        {
+            short[] indeces = new short[]
+            {
+                0,1,2, 2,3,0, // Top
+                4,5,6, 6,7,4, // Bottom
+                0,1,5, 5,4,0, // Front
+                2,3,7, 7,6,2, // Back
+                1,2,6, 6,5,1, // Right
+                3,0,4, 4,7,3  // Left
+            };
+
+            Vector3[] vertices = new Vector3[8]
+            {
+                // Front face (Z -)
+                new Vector3(min.X, min.Y, min.Z), // front-bottom-left
+                new Vector3(max.X, min.Y, min.Z), // front-bottom-right
+                new Vector3(max.X, max.Y, min.Z), // front-top-right
+                new Vector3(min.X, max.Y, min.Z), // front-top-left
+
+                // Back face (Z +)
+                new Vector3(min.X, min.Y, max.Z), // back-bottom-left
+                new Vector3(max.X, min.Y, max.Z), // back-bottom-right
+                new Vector3(max.X, max.Y, max.Z), // back-top-right
+                new Vector3(min.X, max.Y, max.Z), // back-top-left
+            };
+            DisableTexture();
+            DisableTexture();
+            foreach (var pass in BasicEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.DrawUserIndexedPrimitives<VertexPositionColor>(
+                    PrimitiveType.TriangleList,
+                    Array.ConvertAll(vertices, i => new VertexPositionColor(i, color)),
+                    0,
+                    vertices.Length,
+                    indeces,
+                    0,
+                    indeces.Length / 3
                 );
             }
         }

@@ -11,7 +11,7 @@ namespace SlimeGame.Models
     internal struct Cube : GenericModel
     {
         BoundingBox GenericModel.BoundingBox => new(Position, BRB);
-        Shape[] GenericModel.Shapes => CreateSquares();
+        //Shape[] GenericModel.Shapes => CreateSquares();
         Color GenericModel.Color { get => _color; set => _color = value; }
 
         Vector3 GenericModel.Position { get => TLF; set => TLF = value; }
@@ -133,28 +133,6 @@ namespace SlimeGame.Models
             cube._cachedSquares = null; // old squares become invalid
             return cube;
         }
-        public void DrawAsWhole(
-            ref TextureBuffer screenBuffer,
-            Color color,
-            Vector3 cameraPosition,
-            float pitch,
-            float yaw,
-            int distance
-            )
-        {
-            foreach (Square square in CreateSquares())
-            {
-                // Draw each triangle in the square
-                square.Draw(
-                    ref screenBuffer,
-                    cameraPosition,
-                    pitch,
-                    yaw,
-                    distance,
-                    _color
-                );
-            }
-        }
         public void SetRotation(Vector3 pivot, Vector2 rotation)
         {
             _rotation = rotation;
@@ -169,6 +147,10 @@ namespace SlimeGame.Models
         }
         public void RecreateSquares()
         {
+            if (_cachedSquares == null)
+            {
+                return;
+            }
             DiscardSquares();
             CreateSquares();
         }

@@ -16,6 +16,7 @@ namespace SlimeGame.Menus
         Rectangle _menuParematers;
         Rectangle _virtualScreen;
         MenuButton[] _menuButtons;
+        public int GetButtonCount => _menuButtons.Length;
         public Vector2 GetVirtualPosition(MouseState mouseState)
         {
             var mousePos = mouseState.Position;
@@ -46,7 +47,7 @@ namespace SlimeGame.Menus
             spriteBatch.GraphicsDevice.SetRenderTarget(_renderTarget);
             _renderTarget.GraphicsDevice.Clear(Color.RoyalBlue);
 
-            spriteBatch.Begin();
+            spriteBatch.Begin(depthStencilState: spriteBatch.GraphicsDevice.DepthStencilState);
             spriteBatch.Draw(screenTexture, _virtualScreen, drawRect, Color.White * 0.5f);
             spriteBatch.End();
 
@@ -56,7 +57,7 @@ namespace SlimeGame.Menus
             }
             spriteBatch.GraphicsDevice.SetRenderTarget(null);
 
-            spriteBatch.Begin();
+            spriteBatch.Begin(depthStencilState: spriteBatch.GraphicsDevice.DepthStencilState);
             spriteBatch.Draw(_renderTarget, drawRect, Color.White);
             spriteBatch.End();
 
@@ -85,8 +86,7 @@ namespace SlimeGame.Menus
         }
         public void ChangeString(int index, string text)
         {
-            _menuButtons[index].Text = text;
+            _menuButtons[index].SetText(text);
         }
-        public int GetButtonCount() => _menuButtons.Length;
     }
 }

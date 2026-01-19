@@ -25,6 +25,7 @@ namespace SlimeGame.Generation
                 random = new Random();
             }
         }
+        public double NextDouble() => random.NextDouble();
         public int Next()
         {
             int totalWeight = _weights.Sum();

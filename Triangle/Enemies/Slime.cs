@@ -1,148 +1,211 @@
-﻿using Microsoft.Xna.Framework;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+using SlimeGame.GameAsset;
+using SlimeGame.GameAsset.IFrames;
+using SlimeGame.GameAsset.Projectiles;
 using SlimeGame.Generation;
 using SlimeGame.Models;
-using SlimeGame.GameAsset;
+using static SlimeGame.GameAsset.SpellBook;
 
 namespace SlimeGame.Enemies
 {
     internal class Slime : Enemy
     {
-        void Enemy.Update(in Player player, in List<Projectile> projectiles, in Random rnd, SeedMapper seedMap, int MapCellSize)
+        public static readonly string EnemyNormal = "Slime_1";
+        public static readonly string EnemyInAir = "Slime_3";
+        public static void LoadContent(ContentManager content)
+        {
+            _enemyNormalModel = new ModelHolder(content.Load<Model>(EnemyNormal));
+            _enemyAirModel = new ModelHolder(content.Load<Model>(EnemyInAir));
+        }
+        static ModelHolder _enemyNormalModel;
+        static ModelHolder _enemyAirModel;
+        ModelHolder GetCurrentModel
+        {
+            get
+            {
+                Vector3 position = _position;
+                ModelHolder currentModel = _speed.Y > 25 ? _enemyAirModel : _enemyNormalModel;
+
+                position.Y -= currentModel.BoundingBox.Min.Y;
+                position.Y -= currentModel.Dimensions.Y / 2;
+
+                currentModel.Move(_yaw, _pitch / 2f, MathF.PI, Scale, position);
+                return currentModel;
+            }
+        }
+        public override void Update(ObjectManager objectManager, Random rnd)
         {
             CheckHeal(in rnd);
-            double TimeSinceLastJump = this.TimeSinceLastJump;
+            double TimeSinceLastJump = this.TimeSinceLastMove;
 
-            _speed.Y += 1.5f;
-            _speed.X *= 0.975f;
-            _speed.Z *= 0.975f;
-            _speed.Y *= 0.99f;
-            _position += _speed;
+            //_position.Y = objectManager.Player.EyePos.Y;
+            _speed.Y += Gravity;
+            if (!Attacking)
+            {
+                _speed.X *= 0.975f;
+                _speed.Z *= 0.975f;
+                _speed.Y *= 0.99f;
+            }
+            _position += _speed * SpeedMultiplier;
 
-            int heightAtPos = seedMap.HeightAtPosition(_position, MapCellSize);
+            float heightAtPos = objectManager.ChunkManager.HeightAtPosition(_position);
             if (heightAtPos < _position.Y)
             {
                 _position.Y = heightAtPos;
-                _speed.Y = Math.Min(0, _speed.Y);
+                if (_speed.Y > 0)
+                {
+                    Attacking = false;
+                    _speed.Y = 0;
+                }
                 onGround = true;
             }
-
-            if (onGround)
+            float JumpRate = this.JumpRate;
+            if (onGround && JumpCooldown - TimeSinceLastJump < 0.5)
             {
-                if (JumpCooldown - TimeSinceLastJump < 1)
+                _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(SquishFactorDown - _squish), JumpRate) * 0.5f, SquishFactorDown);
+                if (_squish <= SquishFactorDown)
                 {
-                    _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(SquishFactorDown - _squish), 0.7f) * 0.5f, SquishFactorDown);
-                    if (_squish <= SquishFactorDown)
-                    {
-                        JumpAtPlayer(player.Position);
-                        onGround = false;
-                        JumpTimer = DateTime.Now;
-                    }
+                    JumpAtPlayer(objectManager.Player.Position);
+                    onGround = false;
+                    MovementTimer = Game1.PlayingGameTime;
                 }
             }
-            else
+            else if (!onGround)
             {
-                _squish = Math.Clamp(_speed.Y * 5, SquishFactorDown, SquishFactorUp);
+                _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(SquishFactorStretch - _squish), JumpRate) * 0.5f, SquishFactorStretch);
+            }
+            else if (onGround)
+            {
+                _squish = Math.Max(_squish - MathF.Pow(MathF.Abs(_squish), JumpRate), 0);
+            }
+            if (Math.Abs(_squish) < 0.01f)
+            {
+                _squish = 0;
             }
 
-            FormModel(TimeSinceLastJump);
 
+            FormModel();
+            base.Update(objectManager, rnd);
         }
-        void Enemy.Knockback(Vector3 position)
+        public override void SetPosition(Vector3 vector)
         {
-            var diff = _position - position;
-            if (diff == Vector3.Zero) diff = Vector3.Up;
-            _position += Vector3.Normalize(diff) * 1f;
+            _position = vector;
+            _speed = Vector3.Zero;
+            FormModel();
         }
-        void Enemy.EnemyHitPlayer(ref Player player)
-        {
-
-        }
-        void Enemy.EnemyIsHit(ref Player player, Vector3 source, int amount)
-        {
-            _speed += Vector3.Normalize(_position - source) * knockBackMultiplier * amount;
-            _health -= amount;
-            Debug.WriteLine($"{this.ToString()} hit! Health now {_health}");
-        }
-        BoundingBox Enemy.BoundingBox { get => _hitbox; }
-        BoundingBox Enemy.Hitbox { get => _hitbox; }
-        GenericModel[] Enemy.models { get => _model; }
-        Vector3 Enemy.Position { get => _position; }
-        int Enemy.Health { get => _health; }
-        int Enemy.MaxHealth { get => MaxHealth; }
-        int Enemy.Height { get => Size; }
-
-
-        private const int JumpStrength = 35;
-        private const int JumpMin = 50;
-        private const int JumpMax = 150;
-        private (int, int, int) jumpInfo => (JumpMin, JumpMax, JumpStrength);
-        private const int Size = 250;
-        private const int Damage = 20;
-        private const int MaxHealth = 125;
-        private const int minHeal = 1;
-        private const int maxHeal = 5;
-        private const float JumpCooldown = 2;
-        private const float SquishFactorUp = 200;
+        public override BoundingBox BoundingBox { get => _hitbox; }
+        public override BoundingBox Hitbox { get => _hitbox; }
+        public override BoundingBox Hurtbox { get => _hurtbox; }
+        public override GenericModel[] models { get => _model; }
+        public override Vector3 Position { get => _position; }
+        public override float Health { get => _health; }
+        public override int Height { get => Math.Abs((int)((ModelHolder)_model[0]).Dimensions.Y); }
+        public override IFrameType iFrameType { get => IFrameType.Universal; }
+        protected override int MaxHealth { get => 300; }
+        protected override float KnockbackMultiplier { get => 0.5f; }
+        protected override float Damage { get => 1.5f; }
+        protected override float IFrameDuration { get => 1f; }
+        private const int minHeal = 3;
+        private const int maxHeal = 4;
+        private const float SpeedMultiplier = 2f;
+        private const float Gravity = 1.5f * SpeedMultiplier;
+        private const float Scale = 10f;
+        private const float JumpCooldown = 4;
         private const float SquishFactorDown = -100;
-        private const float SquishFactorNormal = 50;
-        private const float knockBackMultiplier = 1f;
+        private const float SquishFactorStretch = 150;
+        private const float _paddingPercent = 0.2f;
 
-        private Vector3 _position;
-        private Vector3 _speed;
+        private float JumpRate => 1;
         private bool onGround = false;
-        private GenericModel[] _model = new GenericModel[1];
-        private float _squish = SquishFactorNormal;
-        private double TimeSinceLastJump => (DateTime.Now - JumpTimer).TotalSeconds;
-        private int _health;
-        private BoundingBox _hitbox;
-        private DateTime HealTimer = DateTime.Now;
-        private DateTime JumpTimer = DateTime.Now;
-
+        private float _squish = SquishFactorStretch;
+        private DateTime HealTimer = Game1.PlayingGameTime;
+        private bool Attacking = false;
 
         private void CheckHeal(in Random rnd)
         {
-            if ((DateTime.Now - HealTimer).TotalSeconds > 2)
+            if ((Game1.PlayingGameTime - HealTimer).TotalSeconds > 2)
             {
-                HealTimer = DateTime.Now;
+                HealTimer = Game1.PlayingGameTime;
                 _health = Math.Min(_health + rnd.Next(minHeal, maxHeal), MaxHealth);
             }
         }
-        private void FormModel(double TimeSinceLastJump)
+        public static Vector3 GetMinimumVelocity(
+            Vector3 start,
+            Vector3 target,
+            float gravity)
         {
+            Vector3 displacement = target - start;
+
+            // Horizontal displacement (XZ plane)
+            Vector3 displacementXZ = new Vector3(displacement.X, 0f, displacement.Z);
+            float x = displacementXZ.Length();
+
+            // Vertical displacement
+            float y = displacement.Y;
+
+            float g = MathF.Abs(gravity);
+
+            // Minimum-speed solution (discriminant = 0)
+            float speed = MathF.Sqrt(g * (y + MathF.Sqrt(x * x + y * y)));
+
+            // Launch angle
+            float angle = MathF.Atan((y + MathF.Sqrt(x * x + y * y)) / x);
+
+            Vector3 directionXZ = Vector3.Normalize(displacementXZ);
+
+            // Velocity vector
+            Vector3 velocity =
+                directionXZ * MathF.Cos(angle) * speed +
+                Vector3.Up * MathF.Sin(angle) * speed;
+
+            return velocity;
+        }
+
+        private void FormModel()
+        {
+            /* Cubic slime with squish effect
             float height = Size + _squish;
-            var newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size, Color.Purple);
+            Vector3 Padding;
+
+            Cube newCube = new Cube(_position - new Vector3(Size / 2, height, Size / 2), Size, height, Size, Color.Purple);
+            newCube.SetRotation(_position, Rotation);
+            Padding = (newCube.Opposite - newCube.Position) * _paddingPercent;
+
             _model[0] = newCube;
             _hitbox = new BoundingBox(newCube.Position, newCube.Opposite);
-        }
-        private void JumpAtPlayer(Vector3 playerPos, int jumpheight, int jumpStrength)
-        {
-            Vector3 dir = playerPos - _position;
-            dir.Y = 0;
-            dir.Normalize();
-            dir *= jumpStrength;
-            dir.Y = -jumpheight;
-            _speed += dir;
+            _hurtbox = new BoundingBox(newCube.Position + Padding, newCube.Opposite - Padding);
+            */
+            Vector3 Padding;
+            Padding = (GetCurrentModel.Dimensions) * _paddingPercent;
+            _model = new GenericModel[] { GetCurrentModel };
+            _hitbox = GetCurrentModel.BoundingBox;
+            _hurtbox = new BoundingBox(GetCurrentModel.Min + Padding, GetCurrentModel.Max - Padding);
         }
         private void JumpAtPlayer(Vector3 playerPos)
         {
-            Vector3 dir = playerPos - _position;
+            //Vector3 dir = playerPos - _position;
+            //_speed.Z += Math.Clamp(dir.Z * 0.06f, -100, 100);
+            //_speed.X += Math.Clamp(dir.X * 0.06f, -100, 100);
+            //_speed.Y += Math.Max(dir.Y * 0.3f - JumpMin, -100);
 
-            _speed.Z += Math.Clamp(dir.Z * 0.05f, -50, 50);
-            _speed.X += Math.Clamp(dir.X * 0.05f, -50, 50);
-            _speed.Y += Math.Max(dir.Y * 0.1f - JumpMin, -100);
+            Attacking = true;
+            _speed = GetMinimumVelocity(Position, playerPos, Gravity / SpeedMultiplier) * 1f;
+            _speed.Y *= -1;
         }
         public Slime(Vector3 position)
         {
             _position = position;
             _speed = Vector3.Down * 25;
             _health = MaxHealth;
-            FormModel(0);
+            FormModel();
         }
 
     }

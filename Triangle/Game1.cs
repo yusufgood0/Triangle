@@ -3,77 +3,97 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Runtime.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SlimeGame.Enemies;
 using SlimeGame.GameAsset;
+using SlimeGame.GameAsset.IFrames;
+using SlimeGame.GameAsset.Projectiles;
+using SlimeGame.GameAsset.SpriteSheets;
+using SlimeGame.GameAsset.StatusEffects;
 using SlimeGame.Generation;
 using SlimeGame.Input;
 using SlimeGame.Menus;
 using SlimeGame.Models;
 using SlimeGame.Models.Shapes;
+using TextureArray;
+using static SlimeGame.GameAsset.SpriteSheets.SpriteSheetManager;
 namespace SlimeGame
 {
     public class Game1 : Game
     {
+        public static DateTime PlayingGameTime = DateTime.Now;
+
+        // Configuration constants
+        private const bool _menusFillScreen = false;
+        private readonly Color _defaultButtonColor = Color.DarkSlateBlue;
+        private const float _FOV = MathHelper.Pi * 0.75f;
+        private readonly Point mapSize = new(400, 400);
+        private const int MapCellSize = 80;
+
+        // Possibly adjustable gameplay constants
+        private const float _sensitivity = 0.01f;
+
+        // One and done tools which are used throughout the game
+        private static readonly Random rnd = new Random();
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private SpriteFont _spriteFont;
-        private Texture2D _blankTexture; //for testing purposes
         private Texture2D _gradiantSquare; //for buttons
-        private Color _defaultButtonColor = Color.DarkSlateBlue;
-        private Player _player;
-        private bool _previousIsMouseVisible = false;
-        private Point _screenSize;
-        private int _pixelSize = 4;
-        private float _FOV = MathHelper.Pi / 1.5f;
-        private bool _fillScreen = false;
-        private Rectangle _drawParemeters;
-        private float _sensitivity = 0.01f;
-        private MasterInput _masterInput = new MasterInput();
-        private MouseState _mouseState;
-        private MouseState _previousMouseState;
-        private List<GenericModel> _models = new List<GenericModel>();
-        private TextureBuffer _screenBuffer;
-        private FramesPerSecondTimer _framesPerSecondTimer = new();
-        private SeedMapper _seedMapper;
-        private Point mapSize = new(400, 400);
-        private Point playerTileIndex;
-        private const int MapCellSize = 40;
-        private List<Projectile> _projectiles = new List<Projectile>();
-        private Random rnd = new Random();
-        private SpellBook _spellbook = new SpellBook();
-        private List<SquareParticle> _squareParticles = new();
-        private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
-        private List<Enemy> Enemies = new();
+        private WorldDraw _worldDraw;
         private PauseMenu _pauseMenu;
         private SettingsMenu _settingsMenu;
+        private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
+        private readonly MasterInput _masterInput = new MasterInput();
+        private readonly SpellBook _spellbook = new SpellBook(rnd);
+        private readonly FramesPerSecondTimer _framesPerSecondTimer = new();
+
+        // storing values and perameters to communicate between draw and other methods
+        private Point _screenSize;
+        private Rectangle _drawParemeters;
+        private bool _previousIsMouseVisible = false;
         private gamestates _currentGameState = gamestates.Playing;
-        WorldDraw worldDraw;
-        VertexPositionColorNormal[] MapVertexPositionColorNormal;
-        private bool Playing => _currentGameState == gamestates.Playing;
-        private bool Paused => _currentGameState == gamestates.Paused;
-        private bool SettingsMenu => _currentGameState == gamestates.SettingsMenu;
-        private enum gamestates
-        {
-            Playing,
-            Paused,
-            SettingsMenu
-        }
-        public enum Actions
-        {
-            AddFire = 0,
-            AddWater = 1,
-            AddAir = 2,
-            AddEarth = 3,
-            CastSpell = 4
-        }
+        private const int _maxParticleCount = 1000;
+
+        // for terrain drawing
+        readonly Color[] _chunkManagerColors = new Color[3];
+
+        // only used for testing
+        private List<GenericModel> _models = new List<GenericModel>();
+        private Texture2D _chadGabeTexture;
+        private readonly bool _debugMode = false;
+
+        // Game objects
+        ObjectManager _objectManager;
+
+        // Drawing hearts for health
+        SpriteSheetManager _spriteSheetManager;
+        private (int X, int Y) Offset = (416, 209);
+        private (int X, int Y) PixelSize = (16, 15);
+        private (int X, int Y) MaxPixel = (5, 3);
+
+        // Ui Manager
+        UIManager _UIManager;
+
+        // Day/Night cycle length in minutes
+        float DayLength = 10f;
+
+        // Game state properties
+        private bool Playing { get => _currentGameState == gamestates.Playing; set => _currentGameState = value ? gamestates.Playing : _currentGameState; }
+        private bool Paused { get => _currentGameState == gamestates.Paused; set => _currentGameState = value ? gamestates.Paused : _currentGameState; }
+        private bool SettingsMenu { get => _currentGameState == gamestates.SettingsMenu; set => _currentGameState = value ? gamestates.SettingsMenu : _currentGameState; }
+        private bool LevelUpMenu { get => _currentGameState == gamestates.LevelUpMenu; set => _currentGameState = value ? gamestates.LevelUpMenu : _currentGameState; }
+        private enum gamestates { Playing, Paused, SettingsMenu, LevelUpMenu }
 
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.IsFullScreen = false;
+            _graphics.IsFullScreen = true;
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
         }
@@ -82,21 +102,15 @@ namespace SlimeGame
         {
 
             /* resizes screen */
-            _screenSize.X = GraphicsDevice.Adapter.CurrentDisplayMode.Width;
-            _screenSize.Y = GraphicsDevice.Adapter.CurrentDisplayMode.Height;
-            _screenSize.X = 800;
-            _screenSize.Y = 800;
-            _graphics.PreferredBackBufferWidth = _screenSize.X;
-            _graphics.PreferredBackBufferHeight = _screenSize.Y;
+
+            _graphics.PreferredBackBufferWidth = _screenSize.X = _graphics.IsFullScreen ? GraphicsDevice.Adapter.CurrentDisplayMode.Width : 800;
+            _graphics.PreferredBackBufferHeight = _screenSize.Y = _graphics.IsFullScreen ? GraphicsDevice.Adapter.CurrentDisplayMode.Height : 800;
             _graphics.ApplyChanges();
 
-
-
-            /* Initilizes blank texture as a 1x1 white pixel texture */
+            /* Initilizes blank texture as a 1x1 white pixel texture 
             _blankTexture = new Texture2D(GraphicsDevice, 1, 1);
             _blankTexture.SetData(new Color[] { Color.White });
             // */
-
 
             /* randomly places many orbs around for testing 
             for (int i = 0; i < 500; i++)
@@ -121,25 +135,24 @@ namespace SlimeGame
             }
             // */
 
-
             /* Spawns a Cube at the origin point with a height width and depth of 100 
             Cubes.Add(new Cube(new Vector3(100, 0, 0), 100, 100, 100));
             // */
 
             base.Initialize();
         }
-
+        (VertexPositionColorNormalTexture[] Vertices, int[] Indices, BoundingBox BoundingBox) tempMesh;
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-            _screenBuffer = new TextureBuffer(_screenSize.X / _pixelSize, _screenSize.Y / _pixelSize, Color.Transparent);
-            _spriteFont = Content.Load<SpriteFont>("GameFont");
+            _spriteFont = Content.Load<SpriteFont>("ExperienceFont");
             _gradiantSquare = Content.Load<Texture2D>("GradiantSquare");
+            _chadGabeTexture = Content.Load<Texture2D>("CHAD GABE");
+            Texture2D Elements = Content.Load<Texture2D>("Elements");
+            Slime.LoadContent(Content);
 
-            Triangle.Initialize(_screenBuffer);
-            Square.Initialize(_screenBuffer);
             Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
-            if (_fillScreen)
+            if (_menusFillScreen)
             {
                 _drawParemeters = new Rectangle(0, 0, _screenSize.X, _screenSize.Y);
             }
@@ -156,144 +169,156 @@ namespace SlimeGame
 
             int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
 
-
-            /* Load Map */
-            Random rnd = new Random();
-            _seedMapper = new SeedMapper(
-                mapSize.X,
-                mapSize.Y,
-                new int[] { 9, 10 },
-                0,
-                rnd.Next(1, int.MaxValue)
-                );
-
-            int H = _seedMapper.height;
-            int W = _seedMapper.width;
-            _seedMapper.SmoothenHeights(10);
-
-            for (int i = 0; i < 5; i++)
-            {
-                (p1x, p1y) = (0, rnd.Next(0, H));
-                (p2x, p2y) = (W, rnd.Next(0, H));
-                (p3x, p3y) = (rnd.Next(0, W), 0);
-                (p4x, p4y) = (rnd.Next(0, W), H);
-                if (rnd.Next(0, 2) == 1) { (p1x, p2x) = (p2x, p1x); }
-                if (rnd.Next(0, 2) == 1) { (p3y, p4y) = (p4y, p3y); }
-                if (rnd.Next(0, 2) == 1) { (p1x, p2x) = (p4y, p3y); }
-                if (rnd.Next(0, 2) == 1) { (p2x, p1x) = (p4y, p3y); }
-                _seedMapper.BezierSmoother(10,
-                    p1x, p1y,
-                    p2x, p2y,
-                    p3x, p3y,
-                    p4x, p4y
-                );
-            }
-            _seedMapper.SmoothenHeights(15);
-            _seedMapper.ApplySeaLevel(-50);
-
-            var (PlayerX, PlayerY) = _seedMapper.CubicBezier(0.1f,
-                p1x, p1y,
-                p2x, p2y,
-                p3x, p3y,
-                p4x, p4y
-                );
-            var PlayerPos =
-            new Vector3(
-            PlayerX * MapCellSize,
-            _seedMapper.Heights[PlayerX, PlayerY] + 50,
-            PlayerY * MapCellSize
-            );
-
-
-            Enemies.Add(new Archer(PlayerPos));
-            Enemies.Add(new Archer(PlayerPos));
-            Enemies.Add(new Archer(PlayerPos));
+            /* Determine player spawn position */
+            var PlayerPos = Vector3.Zero;
 
             /* Initilize player object */
-            _player = new Player(
-                PlayerPos,
-                new Camera(_screenSize.Y / _screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 15000, _FOV * 1.2f) //bloats FOV to ensure no clipping on camera
+            _objectManager =
+                new ObjectManager(
+                new Player(
+                    PlayerPos,
+                    new Camera(_screenSize.Y / _screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 15000, _FOV * 1.1f),
+                    rnd,
+                    _screenSize,
+                    0.05f,
+                    0.1f,
+                    Content.Load<Texture2D>("PixelScrollNoBG")
+                    ), //bloats FOV to ensure no clipping on camera
+                new ChunkManager(rnd.Next(Int32.MinValue, Int32.MaxValue), PlayerPos, 6, 3, 300, 15000f)
                 );
 
-            worldDraw = new WorldDraw(
+            /* Initialize Map Vertices */
+            _objectManager.ChunkManager._MapVertexPositionColorNormals = _objectManager.ChunkManager.GetVerticesAsync(_chunkManagerColors, _objectManager.Player.EyePos).GetAwaiter().GetResult();
+
+            /* Initilize world draw object */
+            _worldDraw = new WorldDraw(
                 GraphicsDevice,
                 doubleSided: true,
-                texture: Content.Load<Texture2D>("GradiantSquare")
+                texture: null
                 );
 
-            MapVertexPositionColorNormal = new VertexPositionColorNormal[_seedMapper.height * _seedMapper.width];
-            var valueMap = _seedMapper.Values;
-            var Colors = new Color[] { Color.DarkSeaGreen, Color.DarkSlateGray };
-
-            for (int y = 0; y < _seedMapper.height; y++)
+            SpriteSheetManager healthDisplay;
             {
-                for (int x = 0; x < _seedMapper.width; x++)
+                (int Width, int Height) drawSize = (60, 60);
+                int columns = 5;
+                int rows = 1;
+                int totalSprites = columns * rows;
+                var healthSprites = new (int X, int Y)[totalSprites];
+                for (int x = 0; x < columns; x++)
                 {
-                    int index = y * _seedMapper.width + x;
+                    for (int y = 0; y < rows; y++)
+                    {
+                        healthSprites[x + y * columns] = (10 + x * (drawSize.Width + 10), 10 + y * (drawSize.Height + 10));
+                    }
+                }
+                healthDisplay = new SpriteSheetManager(
+                    Content.Load<Texture2D>("RpgSpriteCollection"),
+                    new SpriteSheetManager.FinishBehavior[] { SpriteSheetManager.FinishBehavior.WaitOnFirstFrame },
+                    new (int, int)[] { (10, 10), (10 + drawSize.Width, 10) },
+                    Offset,
+                    PixelSize,
+                    MaxPixel,
+                    drawSize: drawSize
+                    );
 
-                    MapVertexPositionColorNormal[index].Position = new Vector3(
-                        x * MapCellSize,
-                        _seedMapper.Heights[x, y],
-                        y * MapCellSize
+            }
+
+            int elementDisplayCount = SpellBook.MaxElements;
+            TextureHolder[] elementDisplay = new TextureHolder[elementDisplayCount];
+            {
+                int spacing = 10;
+                (int XSize, int Ysize) = (60, 60);
+                (int Xoffset, int Yoffset) = (_screenSize.X - (spacing + XSize) * elementDisplayCount, spacing);
+                for (int i = 0; i < elementDisplayCount; i++)
+                {
+                    elementDisplay[i] = new TextureHolder(
+                        Elements,
+                        TextureHolder.EndEffect.SuppressUpdate,
+                        new Rectangle(Xoffset + (spacing + XSize) * i, Yoffset, XSize, Ysize),
+                        SpriteSheet: 0,
+                        defaultFrame: 0
                         );
-
-
                 }
             }
-            for (int y = 0; y < _seedMapper.height - 1; y++)
+            Slider expSlider;
             {
-                for (int x = 0; x < _seedMapper.width - 1; x++)
-                {
-                    int index = y * _seedMapper.width + x;
-                    Vector3 p1 = MapVertexPositionColorNormal[index].Position;
-                    Vector3 p2 = MapVertexPositionColorNormal[index + 1].Position;
-                    Vector3 p3 = MapVertexPositionColorNormal[index + 1 + _seedMapper.width].Position;
-                    Vector3 p4 = MapVertexPositionColorNormal[index + _seedMapper.width].Position;
+                int xpos, ypos;
+                float width, height; //percentages
+                width = 0.5f;
+                height = 0.025f;
+                width *= _screenSize.X;
+                height *= _screenSize.Y;
 
-                    MapVertexPositionColorNormal[index].Color = Colors[valueMap[x, y]];
+                xpos = (int)(_screenSize.X * 0.5f - width / 2);
+                ypos = (int)(_screenSize.Y * 0.75f - height / 2);
 
-                    Vector3 side1 = p2 - p1;
-                    Vector3 side2 = p3 - p1;
-                    Vector3 side3 = p4 - p1;
-
-                    Vector3 normalDir1 = Vector3.Cross(side1, side2);
-                    normalDir1.Normalize();
-                    Vector3 normalDir2 = Vector3.Cross(side2, side3);
-                    normalDir2.Normalize();
-
-                    Vector3 normalDir = (normalDir1 + normalDir2) / 2;
-                    MapVertexPositionColorNormal[index].Color = Color.Lerp(MapVertexPositionColorNormal[index].Color, Color.LightGoldenrodYellow, Vector3.Dot(normalDir, Vector3.Down) * 0.15f);
-                }
+                expSlider = new Slider(
+                    new Rectangle(xpos, ypos, (int)width, (int)height),
+                    0f,
+                    Color.DarkGray,
+                    Color.Green
+                    );
             }
 
-            Square.UpdateConstants(_FOV);
-            Triangle.UpdateConstants(_FOV);
+            _UIManager = new UIManager(
+                elementDisplay,
+                healthDisplay,
+                expSlider,
+                new Slider(
+                    new Rectangle(20, _screenSize.Y - 60 - 20, 200, 20),
+                    0f,
+                    Color.DarkGray,
+                    Color.LightGreen
+                    ),
+                _spriteFont,
+                _spriteBatch
+                );
+
+            IFrameInstance.AddIFrame(new IFrameInstance(new object(), 3, IFrameType.Universal));
         }
+        bool temp = false;
         protected override void Update(GameTime gameTime)
         {
             if (_masterInput.OnPress(Buttons.Back) || _masterInput.OnPress(Keys.Escape) && _masterInput.OnPress(Keys.LeftAlt))
                 Exit();
 
-            _previousMouseState = _mouseState;
-            _mouseState = Mouse.GetState();
+            _masterInput.PreviousMouseState = _masterInput.MouseState;
+            _masterInput.MouseState = Mouse.GetState();
             _previousIsMouseVisible = IsMouseVisible;
             _masterInput.UpdateStates();
             IsMouseVisible = !Playing || !IsActive;
 
-            foreach (var modelIndex in Enumerable.Range(0, _models.Count))
+            _UIManager.Update(
+                _objectManager.Player,
+                _spellbook,
+                _objectManager.Player.LevelManager,
+                0.75f
+                );
+
+
+            if (_masterInput.OnPress(Keys.Enter))
             {
-                _models[modelIndex].ChangeRotation(0.01f, 1f);
+                foreach (var effect in StatusEffect._activeEffects)
+                {
+                    Debug.WriteLine(effect.GetType().ToString());
+
+                }
             }
+
+            //foreach (var modelIndex in Enumerable.Rang
+            //{
+            //    _models[modelIndex].ChangeRotation(0.01f, 1f);
+            //}
 
             if (_masterInput.OnPress(KeybindActions.GamePadClick))
             {
-                _mouseState = new MouseState(
-                _mouseState.X, _mouseState.Y, _mouseState.ScrollWheelValue,                // X, Y, ScrollWheelValue
+                _masterInput.MouseState = new MouseState(
+                _masterInput.MouseState.X, _masterInput.MouseState.Y, _masterInput.MouseState.ScrollWheelValue,                // X, Y, ScrollWheelValue
                 ButtonState.Pressed,        // LeftButton
-                _mouseState.MiddleButton,       // MiddleButton
-                _mouseState.RightButton,       // RightButton
-                _mouseState.XButton1,       // XButton1
-                _mouseState.XButton2        // XButton2
+                _masterInput.MouseState.MiddleButton,       // MiddleButton
+                _masterInput.MouseState.RightButton,       // RightButton
+                _masterInput.MouseState.XButton1,       // XButton1
+                _masterInput.MouseState.XButton2        // XButton2
             );
             }
 
@@ -302,153 +327,148 @@ namespace SlimeGame
 
             if (controllerOffset != Vector2.Zero)
             {
-                Point newMousePos = _mouseState.Position + controllerOffset.ToPoint();
+                Point newMousePos = _masterInput.MouseState.Position + controllerOffset.ToPoint();
                 Mouse.SetPosition(newMousePos.X, newMousePos.Y);
             }
-
-
-            if (Playing)
+            else if (Playing)
             {
+                PlayingGameTime = PlayingGameTime.AddSeconds((float)gameTime.ElapsedGameTime.TotalSeconds);
+                if (!IsActive)
+                {
+                    Paused = true;
+                }
+
                 if (_masterInput.OnPress(KeybindActions.BackButton))
                 {
                     _currentGameState = gamestates.Paused;
                 }
+                _objectManager.PlayUpdate(_masterInput);
+                _objectManager.Player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, _screenSize, _sensitivity);
 
-                _player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, _screenSize, _sensitivity);
-                _player.Update(_masterInput);
-
-                foreach (Enemy enemy in Enemies)
+                // Update player, and animates heart rotate after full heal
+                if (_objectManager.Player.Update(_masterInput, _objectManager.ChunkManager) && _objectManager.Player.Health % 1 == 0)
                 {
-                    foreach (Enemy enemy2 in Enemies)
+                    _UIManager.RotateLastHeart((int)_objectManager.Player.Health);
+                }
+
+                StatusEffect.UpdateAllEffects(_objectManager);
+                IFrameInstance.CullExpiredIframes();
+
+                RenewMapVerticesAsync();
+                if (_objectManager.Player.LevelManager.LevelUpMenu)
+                {
+                    _currentGameState = gamestates.LevelUpMenu;
+                }
+                foreach (Enemy enemy in _objectManager.Enemies)
+                {
+                    foreach (Enemy enemy2 in _objectManager.Enemies)
                     {
-                        if (enemy.Hitbox.Intersects(enemy2.Hitbox))
+                        if (!enemy.Equals(enemy2) && enemy.Hitbox.Intersects(enemy2.Hitbox))
                         {
-                            enemy.Knockback(enemy2.Position);
+                            enemy.Knockback(enemy2.Position - enemy.Position, 0);
                         }
                     }
                 }
-                for (int i = 0; i < _squareParticles.Count; i++)
+                for (int i = 0; i < _objectManager.Particles.Count; i++)
                 {
-                    var particle = _squareParticles[i];
-                    int LifeTime = (int)(DateTime.Now - particle.CreationTime).TotalSeconds;
+                    var particle = _objectManager.Particles[i];
+                    int LifeTime = (int)(Game1.PlayingGameTime - particle.CreationTime).TotalSeconds;
                     if (LifeTime > 1)
                     {
-                        _squareParticles.RemoveAt(i);
+                        _objectManager.Particles.RemoveAt(i);
                         i--;
                         continue;
                     }
-                    _squareParticles[i] = _squareParticles[i].Float(20, rnd);
+                    _objectManager.Particles[i] = _objectManager.Particles[i].Float(20, rnd);
                 }
-                for (int i = 0; i < Enemies.Count; i++)
+                for (int i = 0; i < _objectManager.Enemies.Count; i++)
                 {
-                    Enemies[i].Update(in _player, in _projectiles, in rnd, _seedMapper, MapCellSize);
-                    if (Vector3.DistanceSquared(Enemies[i].Position, _player.Position) > 20000 * 20000)
+                    _objectManager.Enemies[i].Update(_objectManager, rnd);
+                    if (Vector3.DistanceSquared(_objectManager.Enemies[i].Position, _objectManager.Player.Position) > 20000 * 20000)
                     {
-                        Enemies.RemoveAt(i);
+                        _objectManager.Enemies.RemoveAt(i);
                         i--;
                         continue;
                     }
-                }
-                for (int i = 0; i < _projectiles.Count; i++)
-                {
-                    var projectile = _projectiles[i];
-                    if (projectile.Move(_seedMapper, MapCellSize))
+                    if (_objectManager.Enemies[i].Hurtbox.Intersects(_objectManager.Player.HitBox))
                     {
-                        _squareParticles.AddRange(projectile.HitGround(rnd));
-                        _projectiles.Remove(projectile);
+                        // Player is hit by enemy
+                        _objectManager.Enemies[i].EnemyHitPlayer(_objectManager.Player);
+
+                    }
+                }
+                for (int i = 0; i < _objectManager.Projectiles.Count; i++)
+                {
+                    var projectile = _objectManager.Projectiles[i];
+                    if (projectile.Move(_objectManager.ChunkManager))
+                    {
+                        _objectManager.Particles.AddRange(projectile.GetPixelDeathParticles(rnd, _objectManager));
+                        _objectManager.Projectiles.Remove(projectile);
                         i--;
                         continue;
                     }
                     bool HitSomething = false;
                     if (projectile.TargetType == TargetType.Enemy)
                     {
-                        for (int j = 0; j < Enemies.Count; j++)
+                        for (int j = 0; j < _objectManager.Enemies.Count; j++)
                         {
-                            var enemy = Enemies[j];
+                            var enemy = _objectManager.Enemies[j];
                             if (enemy.Hitbox.Intersects(projectile.HitBox))
                             {
-                                Debug.WriteLine("Enemy Hit!");
                                 HitSomething = true;
-                                enemy.EnemyIsHit(ref _player, _player.Position, projectile.HitDamage);
-                                if (enemy.Health <= 0)
+                                if (projectile.Persistant)
                                 {
-                                    Enemies.RemoveAt(j--);
-                                    continue;
+                                    if (enemy.EnemyIsHit(Vector3.Zero, projectile.HitDamage, _objectManager))
+                                    {
+                                        j--;
+                                        continue;
+                                    }
+                                    enemy.ImmuneFor(projectile.IFrameDuration);
+                                }
+                                else
+                                {
+                                    if (enemy.EnemyIsHit(enemy.Position - projectile.Position, projectile.HitDamage, _objectManager))
+                                    {
+                                        j--;
+                                        continue;
+                                    }
                                 }
                             }
                         }
                     }
                     else if (projectile.TargetType == TargetType.Player)
                     {
-                        if (projectile.HitBox.Intersects(_player.HitBox))
+                        if (projectile.HitBox.Intersects(_objectManager.Player.HitBox))
                         {
                             // Player hit logic
                             HitSomething = true;
                         }
                     }
-                    if (HitSomething)
+                    if (!projectile.Persistant && HitSomething)
                     {
-                        _squareParticles.AddRange(projectile.HitGround(rnd));
-                        _projectiles.Remove(projectile);
+                        _objectManager.Particles.AddRange(projectile.GetPixelDeathParticles(rnd, _objectManager));
+                        _objectManager.Projectiles.Remove(projectile);
                         i--;
                         continue;
                     }
 
-                    SquareParticle? particle = projectile.GetParticles(rnd);
-                    if (particle == null) { continue; }
-                    _squareParticles.Add((SquareParticle)particle);
+                    projectile.AddParticles(_objectManager.Particles, rnd);
                 }
-
-                playerTileIndex = new Point(
-                    (int)(_player.Position.X / MapCellSize),
-                    (int)(_player.Position.Z / MapCellSize)
-                    );
-
-                int terrainHeightAtPlayerPosition;
-
-                /* Find tile at player position */
-                int playerXIndex = (int)_player.Center.X / MapCellSize;
-                int playerYIndex = (int)_player.Center.Z / MapCellSize;
-
-
-                /* Bounds check */
-                if (playerXIndex >= 0 && playerYIndex >= 0 && playerXIndex < _seedMapper.width && playerYIndex < _seedMapper.height)
+                while (_objectManager.Particles.Count > _maxParticleCount)
                 {
-                    terrainHeightAtPlayerPosition = _seedMapper.Heights[playerXIndex, playerYIndex] - Player.sizeY;
-                }
-                else
-                {
-                    terrainHeightAtPlayerPosition = int.MaxValue;
+                    _objectManager.Particles.RemoveAt(rnd.Next(0, _objectManager.Particles.Count()));
                 }
 
-                /* If player is below terrain, move them to terrain height */
-                if (terrainHeightAtPlayerPosition < _player.Position.Y)
-                {
-                    Vector3 normal = _seedMapper.GetNormal(playerXIndex, playerYIndex);
-                    if (normal.Y < 0)
-                    {
-                        normal *= -1;
-                    }
-                    _player.HitGround(_masterInput.KeyboardState, normal);
-                    _player.SetPosition(
-                    new Vector3(
-                        _player.Position.X,
-                        terrainHeightAtPlayerPosition,
-                        _player.Position.Z
-                    ));
-                    //_squareParticles.Add(new SquareParticle(
-                    //    new Vector3(playerXIndex * MapCellSize, terrainHeightAtPlayerPosition + Player.sizeY, playerYIndex * MapCellSize),
-                    //    Color.SandyBrown,
-                    //    -normal * 50,
-                    //    rnd
-                    //    ));
-                }
-                if (terrainHeightAtPlayerPosition - 20 <= _player.Position.Y && _masterInput.IsPressed(KeybindActions.Jump))
-                {
-                    _player.Jump();
-                }
+
                 bool AddedElement = false;
                 int currentElements = _spellbook.ElementsCount;
+
+                if (_masterInput.OnLeftPress)
+                {
+                    //_objectManager.ChunkManager.OffsetHeightAtPosition(_objectManager.Player.Position, -10000, ref _objectManager.ChunkManager.VertexPositionColorNormals);
+                    _objectManager.Player.LevelManager.CheatAllRewards(_objectManager.Player);
+                }
+
                 if (_masterInput.OnPress(KeybindActions.AddElementFire))
                 {
                     _spellbook.AddElement(Element.Fire);
@@ -471,8 +491,8 @@ namespace SlimeGame
                 }
                 if (_masterInput.IsPressed(KeybindActions.CastSpell) || currentElements == 3 && AddedElement)
                 {
-                    _spellbook.TryCast(_projectiles, ref _player, ref _squareParticles);
-                    _spellbook.ClearElements();
+                    _spellbook.TryCast(_objectManager);
+                    //_spellbook.ClearElements();
                 }
             }
             else if (Paused)
@@ -481,7 +501,8 @@ namespace SlimeGame
                 {
                     _currentGameState = gamestates.Playing;
                 }
-                PauseMenu.Options input = (PauseMenu.Options)_pauseMenu.GetBehaviorValueOnClick(_previousMouseState, _mouseState);
+
+                PauseMenu.Options input = (PauseMenu.Options)_pauseMenu.GetBehaviorValueOnClick(_masterInput.PreviousMouseState, _masterInput.MouseState);
 
                 switch (input)
                 {
@@ -503,174 +524,170 @@ namespace SlimeGame
                 {
                     _currentGameState = gamestates.Playing;
                 }
-                _settingsMenu.Update(_masterInput, _mouseState, _previousMouseState);
+                _settingsMenu.Update(_masterInput, _masterInput.MouseState, _masterInput.PreviousMouseState);
+            }
+            else if (LevelUpMenu)
+            {
+                _objectManager.Player.LevelManager.UpdateLevelUpMenu(_masterInput, _objectManager.Player);
+                if (!_objectManager.Player.LevelManager.LevelUpMenu)
+                {
+                    _currentGameState = gamestates.Playing;
+                }
+            }
+            if (_masterInput.OnPress(Keys.R))
+            {
+                LoadContent();
             }
 
             base.Update(gameTime);
         }
-
+        async void RenewMapVerticesAsync()
+        {
+            if (_objectManager.ChunkManager.TryTranslateAndGetNewLoadedChunks(_objectManager.Player.EyePos))
+            {
+                _objectManager.ChunkManager._MapVertexPositionColorNormals = await _objectManager.ChunkManager.GetVerticesAsync(_chunkManagerColors, _objectManager.Player.EyePos);
+            }
+        }
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.Black);
-            worldDraw = new WorldDraw(
+            float dayLightTime = (float)(gameTime.TotalGameTime.TotalMinutes / DayLength + 0.5f) % 1f;
+            Color dayLightColor = SkyColorGenerator.GetSkyColor(dayLightTime);
+            GraphicsDevice.Clear(dayLightColor);
+            _worldDraw = new WorldDraw(
                 GraphicsDevice,
+                daylightTime: dayLightTime,
                 doubleSided: true,
                 texture: null,
-                world: null,
-                //world: Matrix.CreateRotationX(_player.Angle.X) * Matrix.CreateRotationY(_player.Angle.Y),
-                //world: Matrix.CreateRotationY(_player.Angle.Y) * Matrix.CreateRotationX(_player.Angle.X),
                 view: Matrix.CreateLookAt(
-                    _player.EyePos,  // camera position (looking toward origin)
-                    _player.EyePos + _player.dirVector,          // target
+                    _objectManager.Player.EyePos,  // camera position (looking toward origin)
+                    _objectManager.Player.EyePos + _objectManager.Player.dirVector,          // target
                     Vector3.Down             // up vector
                 ),
                 projection: Matrix.CreatePerspectiveFieldOfView(
-                    _FOV, // FOV
+                    _FOV + 0.5f * (Math.Clamp(_objectManager.Player.SpeedEffectMultiplierReverse, 0, 0.3f)), // FOV
                     GraphicsDevice.Viewport.AspectRatio, // Aspect Ratio
                     0.1f, // Near Plane
-                    5000f // Far Plane
+                    15000f // Far Plane
                     )
                 );
 
-
-            //worldDraw.SetWorld(Matrix.CreateRotationY(_player.Angle.Y) * Matrix.CreateRotationX(_player.Angle.X));
-            //worldDraw.SetView(_player.PlayerCamera.ViewMatrix);
-            //worldDraw.SetProjection(_player.PlayerCamera.ProjectionMatrix);
-            //GraphicsDevice.SetRenderTarget(null);
-
-            DateTime startTime = DateTime.Now;
-
+            List<GenericModel> testModels = new List<GenericModel>(_models);
             List<Shape> visibleShapes = new();
-            BoundingFrustum viewFrustrum = _player.PlayerCamera.Frustum;
+            BoundingFrustum viewFrustrum = _objectManager.Player.PlayerCamera.Frustum;
 
-            int renderDistance = 200;
-            int startIndexX = Math.Max(0, playerTileIndex.X - renderDistance);
-            int startIndexY = Math.Max(0, playerTileIndex.Y - renderDistance);
-            int endIndexX = Math.Min(_seedMapper.width - 1, playerTileIndex.X + renderDistance);
-            int endIndexY = Math.Min(_seedMapper.height - 1, playerTileIndex.Y + renderDistance);
-            int startIndex = startIndexY * _seedMapper.width + startIndexX;
-            int endIndex = endIndexY * _seedMapper.width + endIndexX;
-            List<int> meshIndeces = new();
-            //Mesh TargetMesh;
-            VertexPositionColorNormal[] vertexPositionColorNormals = new VertexPositionColorNormal[MapVertexPositionColorNormal.Length];
+            // Get merged heightmap from ChunkManager
+            (int totalWidth, int totalHeight) = _objectManager.ChunkManager.MergeLoadedChunksHeightMapDimensions;
 
-            for (int i = 0; i < MapVertexPositionColorNormal.Length; i++)
+            // Draw the terrain
+            if (_objectManager.ChunkManager._MapVertexPositionColorNormals != null)
             {
-                vertexPositionColorNormals[i] = MapVertexPositionColorNormal[i];
-            }
-            for (int y = startIndexY; y < endIndexY; y++)
-            {
-                for (int x = startIndexX; x < endIndexX; x++)
+                VertexPositionColorNormal[] vertexPositionColorNormals = new VertexPositionColorNormal[totalWidth * totalHeight];
+                Vector2 worldOffset = new Vector2(
+                    _objectManager.ChunkManager._loadedChunks[0, 0].XIndex * Chunk.ChunkSize * _objectManager.ChunkManager.TileSize,
+                    _objectManager.ChunkManager._loadedChunks[0, 0].YIndex * Chunk.ChunkSize * _objectManager.ChunkManager.TileSize
+                );
+
+                for (int y = 0; y < totalHeight; y++)
                 {
-                    int index = y * _seedMapper.width + x;
-                    vertexPositionColorNormals[index].Color = MapVertexPositionColorNormal[index].Color * Math.Clamp(1000f/(float)Vector3.Distance(
-                        _player.EyePos,
-                        MapVertexPositionColorNormal[index].Position
-                        ), 0, 1);
-                }
-            }
-
-            for (int y = startIndexY; y < endIndexY; y++)
-            {
-                for (int x = startIndexX; x < endIndexX; x++)
-                {
-                    int index = y * _seedMapper.width + x;
-                    Vector3 p1 = MapVertexPositionColorNormal[index].Position;
-                    Vector3 p2 = MapVertexPositionColorNormal[index + 1].Position;
-                    Vector3 p3 = MapVertexPositionColorNormal[index + 1 + _seedMapper.width].Position;
-                    Vector3 p4 = MapVertexPositionColorNormal[index + _seedMapper.width].Position;
-                    BoundingBox box = new BoundingBox(p1, p3);
-                    //if (!(Triangle.WorldPosToScreenPos(_player.EyePos, _player._angle.Y, _player._angle.X, p1, out Point screenPos) && screenRect.Contains(screenPos))) 
-                    if (viewFrustrum.Contains(box) == ContainmentType.Disjoint
-                        //viewFrustrum.Contains(p2) == ContainmentType.Disjoint &&
-                        //viewFrustrum.Contains(p3) == ContainmentType.Disjoint &&
-                        //viewFrustrum.Contains(p4) == ContainmentType.Disjoint
-                        )
+                    for (int x = 0; x < totalWidth; x++)
                     {
-                        continue;
+                        int index = y * totalWidth + x;
+                        vertexPositionColorNormals[index] = _objectManager.ChunkManager._MapVertexPositionColorNormals[x, y];
                     }
+                }
 
-                    meshIndeces.Add(index);
-                    meshIndeces.Add(index + 1);
-                    meshIndeces.Add(index + 1 + _seedMapper.width);
-                    meshIndeces.Add(index + 1 + _seedMapper.width);
-                    meshIndeces.Add(index + _seedMapper.width);
-                    meshIndeces.Add(index);
-                    //index,
-                    //index + 1,
-                    //index + 1 + _seedMapper.width,
-                    //index + _seedMapper.width
+                // Build mesh indices with proper frustum culling
+                List<int> meshIndices = new();
 
+                for (int y = 0; y < totalHeight - 1; y++)
+                {
+                    for (int x = 0; x < totalWidth - 1; x++)
+                    {
+                        int index = y * totalWidth + x;
 
+                        Vector3 p1 = vertexPositionColorNormals[index].Position;
+                        Vector3 p2 = vertexPositionColorNormals[index + 1].Position;
+                        Vector3 p3 = vertexPositionColorNormals[index + 1 + totalWidth].Position;
+                        Vector3 p4 = vertexPositionColorNormals[index + totalWidth].Position;
+
+                        // Check if any corner of the quad is in the frustum
+                        if (viewFrustrum.Contains(p1) == ContainmentType.Disjoint &&
+                            viewFrustrum.Contains(p2) == ContainmentType.Disjoint &&
+                            viewFrustrum.Contains(p3) == ContainmentType.Disjoint &&
+                            viewFrustrum.Contains(p4) == ContainmentType.Disjoint)
+                        {
+                            continue; // fully outside
+                        }
+
+                        // Add two triangles for this quad
+                        meshIndices.Add(index);
+                        meshIndices.Add(index + 1);
+                        meshIndices.Add(index + 1 + totalWidth);
+
+                        meshIndices.Add(index + 1 + totalWidth);
+                        meshIndices.Add(index + totalWidth);
+                        meshIndices.Add(index);
+                    }
+                }
+
+                // Draw mesh if any indices exist
+                if (meshIndices.Count > 0)
+                {
+                    _worldDraw.DrawMesh(
+                        GraphicsDevice,
+                        meshIndices.ToArray(),
+                        vertexPositionColorNormals,
+                        0,
+                        vertexPositionColorNormals.Length
+                    );
                 }
             }
-            if (meshIndeces.Count > 0)
-                worldDraw.DrawMesh(
-                    GraphicsDevice,
-                    meshIndeces.ToArray(),
-                    vertexPositionColorNormals,
-                    0,
-                    vertexPositionColorNormals.Count()
-                    );
-            //TargetMesh = new Mesh(
-            //    meshIndeces.ToArray(),
-            //    new (int, int, int)[] { },
-            //    heightMap,
-            //    Vector3.Zero,
-            //    Vector2.Zero
-            //    );
-            //TargetMesh.Draw(
-            //    ref _screenBuffer,
-            //    meshColors.ToArray(),
-            //    0.2f,
-            //    _player.EyePos,
-            //    _player.Angle.Y,
-            //    _player.Angle.X,
-            //    lightSource,
-            //    Color.LightGoldenrodYellow
-            //    );
 
-            List<GenericModel> allModels = new List<GenericModel>(_models);
-
-            for (int i = 0; i < _projectiles.Count; i++)
+            for (int i = 0; i < _objectManager.Projectiles.Count; i++)
             {
-                GenericModel model = _projectiles[i].Model;
+                GenericModel model = _objectManager.Projectiles[i].Model;
                 BoundingBox boundingBox = model.BoundingBox;
                 bool inView = ContainmentType.Disjoint != viewFrustrum.Contains(boundingBox);
                 if (inView)
                 {
-                    model.Draw(worldDraw, GraphicsDevice);
+                    model.Draw(_worldDraw, GraphicsDevice);
                 }
             }
 
-            foreach (Enemy enemy in Enemies)
+            foreach (Enemy enemy in _objectManager.Enemies)
             {
                 bool inView = viewFrustrum.Contains(enemy.Hitbox) != ContainmentType.Disjoint;
                 if (inView)
                 {
                     foreach (GenericModel model in enemy.models)
                     {
-                        model.Draw(worldDraw, GraphicsDevice);
+                        model.Draw(_worldDraw, GraphicsDevice);
                     }
                 }
-                visibleShapes.AddRange(enemy.GetHealthBar(_player));
+                //_worldDraw.DrawPositionMarker(
+                //    GraphicsDevice,
+                //    enemy.BoundingBox.Min,
+                //    enemy.BoundingBox.Max,
+                //    Color.Red * 0.5F
+                //    );
+                visibleShapes.AddRange(enemy.GetHealthBar(_objectManager.Player));
             }
 
-            foreach (GenericModel model in allModels)
+            foreach (GenericModel model in testModels)
             {
                 BoundingBox boundingBox = model.BoundingBox;
                 bool inView = ContainmentType.Disjoint != viewFrustrum.Contains(boundingBox);
                 if (inView)
                 {
-                    model.Draw(worldDraw, GraphicsDevice);
+                    model.Draw(_worldDraw, GraphicsDevice);
                 }
             }
+            _objectManager.DrawAllTemporaryObjects(_worldDraw, viewFrustrum, GraphicsDevice);
 
-            _crystalBall.SetPosition(_player);
-            _crystalBall.Draw(_spellbook, worldDraw, GraphicsDevice);
-
-            /* Moves Colors on the CrystalBall */
-            _crystalBall.UpdateHighlights(_spellbook, _player);
+            /* Draw and rotate the Crystal Ball */
+            _crystalBall.SetPosition(_objectManager.Player);
+            _crystalBall.UpdateHighlights(_spellbook, _objectManager.Player);
+            _crystalBall.Draw(_spellbook, _worldDraw, GraphicsDevice);
 
             /* Draw Shapes */
             for (int i = 0; i < visibleShapes.Count; i++)
@@ -679,25 +696,26 @@ namespace SlimeGame
 
                 Vector3 shapePos = shape.Position;
 
-                Color color = shape.ApplyShading(shapePos - _player.EyePos, shape.Color, Color.LightGoldenrodYellow);
+                Color color = shape.Color;
+                //color = shape.ApplyShading(shapePos - _objectManager.Player.EyePos, color, Color.LightGoldenrodYellow);
 
                 if (shape is Square)
                 {
                     var square = (Square)shape;
-                    worldDraw.DrawQuad(GraphicsDevice, new Vector3[] { square.P1, square.P2, square.P3, square.P4 }, color);
+                    _worldDraw.DrawQuad(GraphicsDevice, square.P1, square.P2, square.P3, square.P4, color);
                 }
                 else
                 {
 
                     var triangle = (Triangle)shape;
-                    worldDraw.DrawTriangle(GraphicsDevice, new Vector3[] { triangle.P1, triangle.P2, triangle.P3 }, color);
+                    _worldDraw.DrawTriangle(GraphicsDevice, triangle.P1, triangle.P2, triangle.P3, color);
                 }
             }
 
             /* Draw Particles */
-            foreach (var particle in _squareParticles)
+            foreach (var particle in _objectManager.Particles)
             {
-                worldDraw.DrawTriangle(GraphicsDevice, new Vector3[] { particle.P1, particle.P2, particle.P3 }, particle.Color);
+                _worldDraw.DrawTriangle(GraphicsDevice, particle.P1, particle.P2, particle.P3, particle.Color);
             }
             /*  Draw Particles using Mesh (Slower)
             VertexPositionColor[] particleVertices = new VertexPositionColor[_squareParticles.Count() * 3];
@@ -726,19 +744,24 @@ namespace SlimeGame
             if (_framesPerSecondTimer.Update())
             {
                 /* Runs Every second */
-                Debug.WriteLine("DrawTime: " + (DateTime.Now - startTime).Milliseconds);
                 Debug.WriteLine("FPS: " + _framesPerSecondTimer.FPS);
             }
 
+            _UIManager.Draw(_gradiantSquare);
+
             if (Paused)
             {
-                _pauseMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, _drawParemeters, _mouseState, Color.Red, Color.White);
+                _pauseMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, _drawParemeters, _masterInput.MouseState, Color.Red, Color.White);
             }
             else if (SettingsMenu)
             {
-                _settingsMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, _drawParemeters, _mouseState, Color.Red, Color.White);
+                _settingsMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, _drawParemeters, _masterInput.MouseState, Color.Red, Color.White);
             }
-
+            else if (LevelUpMenu)
+            {
+                _objectManager.Player.LevelManager.DrawLevelUpMenu(_spriteBatch, _spriteFont);
+            }
+            //GraphicsDevice.RasterizerState = RasterizerState.CullNone;
             base.Draw(gameTime);
         }
     }

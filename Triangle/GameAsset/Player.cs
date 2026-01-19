@@ -10,7 +10,10 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.GameAsset.IFrames;
+using SlimeGame.Generation;
 using SlimeGame.Input;
+using SlimeGame.Models.Shapes;
 
 namespace SlimeGame.GameAsset
 {
@@ -19,54 +22,121 @@ namespace SlimeGame.GameAsset
         static Texture2D _texture;
         const int HitboxPadding = -8;
         private static Vector3 HitboxPaddingVector3 = new Vector3(HitboxPadding);
+        private static readonly string _saveDirectory = Path.Combine(Environment.CurrentDirectory, "PlayerInfo", "PlayerPos.txt");
         public static int sizeX = 30;
         public static int sizeY = 140;
         public static int sizeZ = 30;
+        static float _maxHealth = 5;
+
+        Random _rnd;
+        float _health = _maxHealth;
+        ExpManager _ExpManager;
         Vector3 _position = new();
-        Vector3 _speed = new();
-        public Vector2 Angle => _angle + _shake;
+        Vector3 _speed = Vector3.Zero;
+        float _movementMultiplier = 1;
         Vector2 _angle = Vector2.Zero;
         Vector2 _shake = Vector2.Zero;
         Vector2 _shakeDifference = Vector2.Zero;
-        private static readonly string _saveDirectory = Path.Combine(Environment.CurrentDirectory, "PlayerInfo", "PlayerPos.txt");
-        public Camera PlayerCamera { get; set; }
-        public enum GameMode
-        {
-            Survival,
-            Creative
-        }
+        Camera _playerCamera;
+        DateTime UnStunTime = Game1.PlayingGameTime;
+        DateTime HealTimer = Game1.PlayingGameTime;
 
-        GameMode gameMode = GameMode.Survival;
-
-        public Player(Vector3 position, in Camera camera)
+        public static float MaxHealth => _maxHealth;
+        public float Health => _health;
+        public Vector2 Angle => new Vector2(_angle.X + _shake.X, MathHelper.Clamp(_angle.Y + _shake.Y, -MathHelper.PiOver2 + 0.01f, MathHelper.PiOver2 - 0.01f));
+        public Camera PlayerCamera { get => _playerCamera; }
+        public float SpeedEffectMultiplier => Math.Clamp(1 - _speed.Length()/100, 0, 1);
+        public float SpeedEffectMultiplierReverse => Math.Clamp(_speed.Length()/100, 0, 1);
+        public Player(Vector3 position, in Camera camera, Random rnd, Point screenSize, float xPaddingPercent, float yPaddingPercent, Texture2D texture)
         {
             _position = position;
-            PlayerCamera = camera;
+            _playerCamera = camera;
             TryPullPositionFromArchive();
+            _rnd = rnd;
+            _ExpManager = new ExpManager(screenSize, xPaddingPercent, yPaddingPercent, texture);
         }
-        public bool ApplyTerrainCollision(Vector3 normal)
+        public bool IsStunned { get => Game1.PlayingGameTime < UnStunTime; }
+        public BoundingBox HitBox
         {
-            var speed = _speed;
-            speed.Normalize();
-            float dot = Vector3.Dot(Vector3.Up, normal);
-            float AbsDot = Math.Abs(dot);
-            if (AbsDot < 0.07f)
-            {
-                //_speed.X *= Math.Min(AbsDot * 20, 1);
-                //_speed.Z *= Math.Min(AbsDot * 20, 1);
-                _speed += normal;
-                _position.Y += 1;
-                return true;
-            }
-            return false;
+            get => new BoundingBox(
+                _position - HitboxPaddingVector3,
+                _position + new Vector3(sizeX, sizeY, sizeZ) + HitboxPaddingVector3
+                );
         }
-        //public void HitGround(Vector3 normal)
-        //{
+        public Vector3 Speed { get => _speed; }
+        public float SpeedMultiplier { get => _movementMultiplier; set => _movementMultiplier = value; }
+        public ExpManager LevelManager { get => _ExpManager; }
+        public Vector3 Position 
+        { 
+            get => _position; 
+            set => Move(value - _position); 
+        }
+        public Vector3 EyePos => _position + new Vector3(sizeX / 2, 0, sizeZ / 2);
+        public Rectangle Rectangle { get => new((int)_position.X, (int)_position.Y, sizeX, sizeY); }
+        public Vector3 dirVector { get => General.angleToVector3(Angle); }
 
-        //    if (_speed.Y > 15)
+        public void Stun(float duration)
+        {
+            UnStunTime = Game1.PlayingGameTime.AddSeconds(duration);
+        }
+        public void IncreaseMaxHealth(float amount)
+        {
+            _maxHealth += amount;
+        }
+        public bool TryHeal()
+        {
+            if (HealTimer > Game1.PlayingGameTime) return false;
+            _health += 0.5f;
+            _health = Math.Min(_maxHealth, _health);
+            ResetHealTimer();
+            return true;
+        }
+        public void ResetHealTimer()
+        {
+            HealTimer = Game1.PlayingGameTime.AddSeconds(5);
+        }
+        public bool TakeDamage(IFrameInstance iFrame, Vector3 force, float amount)
+        {
+            if (iFrame.IsImmune())
+            {
+                return false;
+            }
+            //ResetHealTimer();
+            WorldDraw.BlinkColors(Color.Red.ToVector3(), Color.Orange.ToVector3(), Color.OrangeRed.ToVector3());
+            IFrameInstance.AddIFrame(iFrame);
+            _health -= amount;
+            _health = Math.Max(0, _health);
+            _speed += force;
+            _shake += amount * 0.5f * new Vector2(
+                (2 * (float)_rnd.NextDouble() - 1f),
+                (2 * (float)_rnd.NextDouble() - 1f)
+                );
+            Stun(0.05f);
+            return true;
+        }
+        public void SetSpeed(Vector3 vector)
+        {
+            _speed = vector;
+        }
+        public void ChangeSpeed(Vector3 vector)
+        {
+            _speed += vector;
+        }
+        //public bool ApplyTerrainCollision(Vector3 normal)
+        //{
+        //    var speed = _speed;
+        //    speed.Normalize();
+        //    float dot = Vector3.Dot(Vector3.Up, normal);
+        //    float AbsDot = Math.Abs(dot);
+        //    if (AbsDot < 0.07f)
         //    {
-        //        _speed = Vector3.Reflect(_speed, normal) * 1.5f;
+        //        //_speed.X *= Math.Min(AbsDot * 20, 1);
+        //        //_speed.Z *= Math.Min(AbsDot * 20, 1);
+        //        _speed += normal;
+        //        _position.Y += 1;
+        //        return true;
         //    }
+        //    return false;
         //}
         public static void SetTexture(Texture2D texture)
         {
@@ -87,58 +157,34 @@ namespace SlimeGame.GameAsset
                 );
             spriteBatch.End();
         }
-        /*
-        public void CollisionX(Cube Cube)
+        public bool Update(MasterInput masterInput, ChunkManager ChunkManager)
         {
-            if (_speed.X > 0)
-            {
-                _position.X = Cube.X - sizeX - .1f;
-                _speed.X = 0;
-            }
-            else if (_speed.X < 0)
-            {
-                _position.X = Cube.X_OP + .1f;
-                _speed.X = 0;
-            }
-        }
-        public void CollisionY(Cube Cube)
-        {
-            if (_speed.Y > 0)
-            {
-                _speed.Y = 0;
-                _position.Y = Cube.Y - sizeY - .1f;
-            }
-            else if (_speed.Y < 0)
-            {
-                _position.Y = Cube.Y_OP + .1f;
-                _speed.Y = 0;
-            }
-        }
-        public void CollisionZ(Cube Cube)
-        {
-            if (_speed.Z > 0)
-            {
-                _speed.Z = 0;
-                _position.Z = Cube.Z - sizeZ - 1f;
-            }
-            else if (_speed.Z < 0)
-            {
-                _position.Z = Cube.Z_OP + .1f;
-                _speed.Z = 0;
-            }
-        }
-        */
-        public void Update(MasterInput masterInput)
-        {
-            ApplyGravity();
             MoveKeyPressed(masterInput);
             Friction();
             UpdateShake();
-            Move(Speed);
+            Move(Speed * _movementMultiplier);
+            CheckIfHitGround(ChunkManager, masterInput.IsPressed(KeybindActions.Jump));
+            _movementMultiplier = 1f + (masterInput.IsPressed(Keys.LeftShift) ? 1f : 0.8f);
+            
+            return TryHeal();
         }
-        public void ApplyGravity()
+        public void ApplyGravity(bool onGround, Vector3 groundNormal)
         {
-            _speed.Y += 0.8f;
+            Vector3 gravity = Vector3.Up * 0.8f;
+            if (onGround)
+            {
+
+                if (_speed.Y > 0)
+                {
+                    _speed *= 1.03f;
+                }
+                Vector3 slopeGravity = gravity - Vector3.Dot(gravity, groundNormal) * groundNormal;
+                _speed += slopeGravity;
+            }
+            else
+            {
+                _speed += gravity;
+            }
         }
         public void Friction()
         {
@@ -148,36 +194,100 @@ namespace SlimeGame.GameAsset
         }
         public void Dash()
         {
-            _speed += dirVector * 50;
+            _speed = dirVector * 80;
         }
-        DateTime lastHit = DateTime.Now;
-        public bool HitGround(KeyboardState keyBoardState, Vector3 normal)
+        public bool IsOnGround(ChunkManager chunkManager)
+            => (int)(chunkManager.HeightAtPosition(_position) - Player.sizeY) <= this.Position.Y;
+        public bool IsOnGround(ChunkManager chunkManager, float Leniency)
+            => (int)(chunkManager.HeightAtPosition(_position) - Player.sizeY - Leniency) <= this.Position.Y;
+        public void CheckIfHitGround(ChunkManager chunkManager, bool tryJump)
         {
-            _speed.X *= 0.95f;
-            _speed.Z *= 0.95f;
+            int terrainHeightAtPlayerPosition = (int)(chunkManager.HeightAtPosition(_position) - Player.sizeY);
+            Vector3 normal = chunkManager.GetNormal(this.EyePos);
+            bool lenientOnGround = IsOnGround(chunkManager, 10);
+            float intoGround = Vector3.Dot(_speed, normal);
+            float dot = Vector3.Dot(Vector3.Normalize(_speed), normal);
+            if (normal.Y > 0) { normal *= -1; }
 
-            if (_speed.Y > 10 || keyBoardState.IsKeyDown(Keys.Space))
+
+            ApplyGravity(lenientOnGround, normal);
+
+            if (lenientOnGround && tryJump)
             {
-                _speed.Y *= -0.6f;
-                return true;
+                Jump(normal);
             }
 
-            _speed.Y = Math.Min(5, _speed.Y);
-            return false;
+            /* If player is below terrain, move them to terrain height */
+            if (lenientOnGround && !tryJump && Math.Abs(dot) < 0.1f)
+            {
+                SetPosition(
+                    new Vector3(
+                        _position.X,
+                        terrainHeightAtPlayerPosition,
+                        _position.Z
+                    ));
+                if (intoGround < 0f && !tryJump)
+                    _speed -= intoGround * normal;
+            }
+            else if (terrainHeightAtPlayerPosition < this.Position.Y)
+            {
+                HitGround(normal, tryJump);
+                SetPosition(
+                    new Vector3(
+                        _position.X,
+                        terrainHeightAtPlayerPosition,
+                        _position.Z
+                    ));
+                if (intoGround < 0f && !tryJump)
+                    _speed -= intoGround * normal;
+            }
+            //_speed.Y = -_speed.Y;
+            //_speed.Y = -_speed.Y;
+            return;
         }
-        public void Jump()
+        public void HitGround(Vector3 normal, bool jumping)
         {
-            _speed.Y = -40;
+
+
+            if (normal != Vector3.Zero && !jumping)
+            {
+                _speed.Y = -_speed.Y;
+                float dot = Vector3.Dot(_speed, normal);
+                    _speed = _speed  * 0.95F- Math.Max(dot, 0) * normal;
+                _speed.Y = -_speed.Y;
+
+            }
         }
-        public void SetPosition(Vector3 vector)
+        public void Jump(Vector3 normal)
+        {
+            //_speed.Y = -40;
+            //_speed -= normal * 10f;
+            SetPosition(_position + normal * 10f);
+            //_speed.Y = -_speed.Y;
+            _speed = Vector3.Reflect(_speed, normal);
+            //_speed.Y = -_speed.Y;
+            _speed.Y = Math.Max(_speed.Y - 15, -30);
+        }
+        void Move(Vector3 vector)
+        {
+            if (IsStunned) return;
+            SetPosition(_position + vector);
+            if (_speed.LengthSquared() > 20)
+            {
+                _shake += 0.004f * new Vector2(
+                    (2 * (float)_rnd.NextDouble() - 1f),
+                    (2 * (float)_rnd.NextDouble() - 1f)
+                    );
+                _shake *= 1f * new Vector2(
+                    (2 * (float)_rnd.NextDouble() - 1f),
+                    (2 * (float)_rnd.NextDouble() - 1f)
+                    ) * (float)Math.Pow(_speed.LengthSquared(), 0.005f);
+            }
+        }
+        void SetPosition(Vector3 vector)
         {
             _position = vector;
-            PlayerCamera.Position = EyePos;
-        }
-        public void Move(Vector3 vector)
-        {
-            _position += vector;
-            PlayerCamera.Position = EyePos;
+            _playerCamera.Position = EyePos;
         }
         enum Direction
         {
@@ -196,7 +306,7 @@ namespace SlimeGame.GameAsset
             dirVector.Y = 0;
             dirVector.Normalize();
 
-            Vector3 RightDirection = Vector3.Cross(dirVector, PlayerCamera.Up);
+            Vector3 RightDirection = Vector3.Cross(dirVector, _playerCamera.Up);
 
             if (masterInput.IsPressed(Keys.W))
                 movement += dirVector;
@@ -245,26 +355,26 @@ namespace SlimeGame.GameAsset
         {
             if (!File.Exists(_saveDirectory))
             {
-                Debug.WriteLine($"Player position file {_saveDirectory} does not exist.");
+                // debug.writeline($"Player position file {_saveDirectory} does not exist.");
                 return; // Chunk does not exist in archive. Pull failed
             }
             string[] PlayerPosition = File.ReadAllLines(_saveDirectory);
             if (PlayerPosition.Length < 3)
             {
-                Debug.WriteLine("Could not read PlayerFile");
+                // debug.writeline("Could not read PlayerFile");
                 return; // Not enough data to set position
             }
             if (float.TryParse(PlayerPosition[0], out float xPos) && float.TryParse(PlayerPosition[1], out float yPos) && float.TryParse(PlayerPosition[2], out float zPos))
             {
                 _position = new Vector3(xPos, yPos, zPos);
-                Debug.WriteLine("Loaded Player position Successfully");
+                // debug.writeline("Loaded Player position Successfully");
             }
         }
         public void SafeControlAngleWithMouse(bool PreviousIsMouseVisible, bool IsMouseVisible, Point screenSize, float sensitivity)
         {
             if (!PreviousIsMouseVisible)
             {
-                UpdateRotation(screenSize, sensitivity);
+                UpdateRotation(screenSize, sensitivity * SpeedEffectMultiplier);
             }
             if (!IsMouseVisible)
             {
@@ -276,14 +386,14 @@ namespace SlimeGame.GameAsset
             _angle.X += (Mouse.GetState().X - screenSize.X / 2) * sensitivity;
             _angle.Y += (Mouse.GetState().Y - screenSize.Y / 2) * sensitivity;
             _angle.Y = MathHelper.Clamp(_angle.Y, -MathHelper.PiOver2 + 0.01f, MathHelper.PiOver2 - 0.01f);
-            PlayerCamera.SetRotation(Angle.X, Angle.Y);
+            _playerCamera.SetRotation(Angle.X, Angle.Y);
 
         }
-        public void Recoil(float intensity, Random rnd)
+        public void Recoil(float intensity)
         {
             _shakeDifference = new(
-                (2 * (float)rnd.NextDouble() - 1f) / (1f / intensity),
-                ((float)rnd.NextDouble() - 1f) / (1f / intensity)
+                (2 * (float)_rnd.NextDouble() - 1f) / (1f / intensity),
+                ((float)_rnd.NextDouble() - 1f) / (1f / intensity)
                 );
             _speed -= dirVector * intensity * 5f;
         }
@@ -308,7 +418,7 @@ namespace SlimeGame.GameAsset
         void UpdateShake()
         {
             _shake += (_shakeDifference - _shake) * 0.06f;
-            _shakeDifference *= 0.91f;
+            _shakeDifference *= 0.93f;
             //if (_shake.Length() < 0.05f)
             //{
             //    _shake = Vector2.Zero;
@@ -316,24 +426,7 @@ namespace SlimeGame.GameAsset
             //}
         }
 
-        public bool IsSurvival { get => gameMode == GameMode.Survival; }
-        public bool IsCreative { get => gameMode == GameMode.Creative; }
-        public BoundingBox HitBox
-        {
-            get => new BoundingBox(
-                _position - HitboxPaddingVector3,
-                _position + new Vector3(sizeX, sizeY, sizeZ) + HitboxPaddingVector3
-                );
-        }
-        public Vector2 XZ { get => new(_position.X, _position.Z); }
-        public Vector3 Speed { get => _speed; }
-        public Vector3 Position { get => _position; }
-        public Vector3 OppositeCorner => Position + new Vector3(sizeX, sizeY, sizeZ);
-        public Vector3 Center { get => _position + new Vector3(sizeX, sizeY, sizeZ) / 2; }
-        public Vector3 EyePos => _position + new Vector3(sizeX / 2, 0, sizeZ / 2);
-        public Rectangle Rectangle { get => new((int)_position.X, (int)_position.Y, sizeX, sizeY); }
-        //public Cube Cube { get => new(_position, sizeX, sizeY, sizeZ);}
-        public Vector3 dirVector { get => General.angleToVector3(Angle); }
+
 
 
     }

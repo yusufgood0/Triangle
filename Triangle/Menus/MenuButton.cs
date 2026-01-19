@@ -12,11 +12,38 @@ namespace SlimeGame.Menus
 {
     internal struct MenuButton
     {
-        public string Text;
+        private string _text;
         public Rectangle ButtonRect;
-        public Rectangle TextRect;
         public int BehaviorValue;
         public Color ButtonColor;
+        private SpriteFont _font;
+        private float _scale = 1;
+        private static float _padding = 0.1f;
+        public void SetText(String text)
+        {
+            _text = text;
+            PreventOverFlow();
+        }
+        Vector2 StringSize => _font.MeasureString(_text) * _scale;
+        public void PreventOverFlow()
+        {
+            _scale = 1;
+            Vector2 size = StringSize;
+            float scale1 = _scale;
+            float scale2 = _scale;
+            if (size.X > ButtonRect.Width)
+            {
+                scale1 = (float)ButtonRect.Width / size.X * scale1;
+                scale1 -= scale1 * _padding  * 2f;
+            }
+            if (size.X > ButtonRect.Width)
+            {
+                scale2 = scale2 = (float)ButtonRect.Width / size.X * scale2;
+                scale2 -= scale2 * _padding * 2f;
+            }
+            _scale = Math.Min(scale1, scale2);
+
+        }
         public bool IsHovered(Vector2 point) => ButtonRect.Contains(point);
         public bool IsHovered(Point point) => ButtonRect.Contains(point);
         public bool IsHovered(MouseState mouseState) => ButtonRect.Contains(new Point(mouseState.X, mouseState.Y));
@@ -26,29 +53,25 @@ namespace SlimeGame.Menus
                    previousMouse.LeftButton == ButtonState.Released &&
                    currentMouse.LeftButton == ButtonState.Pressed;
         }
-        public MenuButton(string text, Rectangle buttonRect, Rectangle textRect, int behaviorValue, Color buttonColor = new())
+        public MenuButton(string text, SpriteFont font, Rectangle buttonRect, Rectangle textRect, int behaviorValue, Color buttonColor = new())
         {
-            Text = text;
+            
             ButtonRect = buttonRect;
-            TextRect = textRect;
             BehaviorValue = behaviorValue;
             ButtonColor = buttonColor;
+            _font = font;
+            SetText(text);
+
         }
         public MenuButton(Rectangle buttonRect, SpriteFont spriteFont, int behaviorValue, string text, Color buttonColor = new())
         {
-            Text = text;
-            ButtonRect = buttonRect;
-
+            _font = spriteFont;
             Vector2 stringSize = spriteFont.MeasureString(text);
-            TextRect = new Rectangle(
-                (int)(buttonRect.X + buttonRect.Width/2 - stringSize.X / 2),
-                (int)(buttonRect.Y + buttonRect.Height/2 - stringSize.Y / 2),
-                (int)stringSize.X,
-                (int)stringSize.Y
-                );
 
             BehaviorValue = behaviorValue;
             ButtonColor = buttonColor;
+            ButtonRect = buttonRect;
+            SetText(text);
         }
 
         public void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Color textColor, Point mousePos)
@@ -61,15 +84,15 @@ namespace SlimeGame.Menus
             }
 
             // Draw button text
-            Vector2 textSize = font.MeasureString(Text);
+            Vector2 textSize = StringSize;
             Vector2 textPosition = new Vector2(
-                TextRect.X + (TextRect.Width - textSize.X) / 2,
-                TextRect.Y + (TextRect.Height - textSize.Y) / 2);
+                ButtonRect.X + (ButtonRect.Width - textSize.X) / 2,
+                ButtonRect.Y + (ButtonRect.Height - textSize.Y) / 2);
 
             // Draw button background 
-            spriteBatch.Begin();
+            spriteBatch.Begin(depthStencilState: spriteBatch.GraphicsDevice.DepthStencilState);
             spriteBatch.Draw(rectTexture, ButtonRect, buttonColor);
-            spriteBatch.DrawString(font, Text, textPosition, textColor);
+            spriteBatch.DrawString(font, _text, textPosition, textColor, 0, new(), _scale, 0, 0);
             spriteBatch.End();
 
 

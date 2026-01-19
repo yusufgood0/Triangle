@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
+// abduki was here
 namespace SlimeGame
 {
     internal class General
@@ -19,6 +20,14 @@ namespace SlimeGame
         public static Vector3 RandomVector3(int min, int max, Random rnd)
         {
             return new Vector3(rnd.Next(min, max), rnd.Next(min, max), rnd.Next(min, max));
+        }
+
+        public static Vector3 RandomVector3(Random rnd)
+        {
+            Vector2 angle;
+            angle.X = (float)rnd.NextDouble() * MathHelper.TwoPi;
+            angle.Y = (float)rnd.NextDouble() * MathHelper.Pi;
+            return angleToVector3(angle);
         }
         public static int min4(int a, int b, int c, int d)
         {
@@ -96,22 +105,14 @@ namespace SlimeGame
                 1 / Vector3.DistanceSquared(cameraPosition, objectPosition)
             );
         }
-        
-        public static Vector3 RotateVector(Vector3 vector, float yaw, float pitch)
+
+        public static Vector3 RotateVector(Vector3 forward, float yaw, float pitch)
         {
-            // Yaw rotation (around Y axis) // first for fps feel
-            float cosYaw = MathF.Cos(yaw);
-            float sinYaw = MathF.Sin(yaw);
-            float x1 = vector.X * cosYaw - vector.Z * sinYaw;
-            float z1 = vector.X * sinYaw + vector.Z * cosYaw;
+            Quaternion yawRot = Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw);
+            Quaternion pitchRot = Quaternion.CreateFromAxisAngle(Vector3.UnitX, pitch);
 
-            // Pitch rotation (around X axis)
-            float cosPitch = MathF.Cos(pitch);
-            float sinPitch = MathF.Sin(pitch);
-            float y1 = vector.Y * cosPitch - z1 * sinPitch;
-            float z2 = vector.Y * sinPitch + z1 * cosPitch;
-
-            return new Vector3(x1, y1, z2);
+            Quaternion rotation = yawRot * pitchRot;
+            return Vector3.Transform(forward, rotation);
         }
 
         public static float AngleDifference(float a, float b)
@@ -144,32 +145,34 @@ namespace SlimeGame
             float z1 = -Vector.X * sinYaw + Vector.Z * cosYaw;
             return new(x1, Vector.Y, z1);
         }
-        public static Vector3 RotateY(Vector3 Vector, float yaw)
+        public static Vector3 RotateY(Vector3 vector, float yaw)
         {
-
             float cosYaw = (float)Math.Cos(yaw);
             float sinYaw = (float)Math.Sin(yaw);
-            float x1 = Vector.X * cosYaw + Vector.Z * sinYaw;
-            float z1 = -Vector.X * sinYaw + Vector.Z * cosYaw;
-            return new(x1, Vector.Y, z1);
+
+            float x1 = vector.X * cosYaw - vector.Z * sinYaw;
+            float z1 = vector.X * sinYaw + vector.Z * cosYaw;
+
+            return new Vector3(x1, vector.Y, z1);
         }
         public static Vector3 Rotate(Vector3 Vector, float yaw, float pitch)
         {
-            // Yaw: rotate around Y-axis
-            float cosYaw = (float)Math.Cos(yaw);
-            float sinYaw = (float)Math.Sin(yaw);
-            float x1 = Vector.X * cosYaw + Vector.Z * sinYaw;
-            float z1 = -Vector.X * sinYaw + Vector.Z * cosYaw;
 
             // Pitch: rotate around X-axis
             float cosPitch = (float)Math.Cos(pitch);
             float sinPitch = (float)Math.Sin(pitch);
-            float y1 = Vector.Y * cosPitch - z1 * sinPitch;
-            float z2 = Vector.Y * sinPitch + z1 * cosPitch;
+            Vector.Y = Vector.Y * cosPitch - Vector.Z * sinPitch;
+            Vector.Z = Vector.Y * sinPitch + Vector.Z * cosPitch;
+            // Yaw: rotate around Y-axis
+            float cosYaw = (float)Math.Cos(yaw);
+            float sinYaw = (float)Math.Sin(yaw);
+            Vector.X = Vector.X * cosYaw + Vector.Z * sinYaw;
+            Vector.Z = -Vector.X * sinYaw + Vector.Z * cosYaw;
 
-            Vector.X = x1;
-            Vector.Y = y1;
-            Vector.Z = z2;
+
+            //Vector.X = x1;
+            //Vector.Y = y1;
+            //Vector.Z = z2;
 
             return Vector;
         }

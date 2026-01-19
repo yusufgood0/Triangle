@@ -14,7 +14,7 @@ namespace SlimeGame.Models
     internal struct Sphere : GenericModel
     {
         BoundingBox GenericModel.BoundingBox => new(Center - new Vector3(Radius), Center + new Vector3(Radius));
-        Shape[] GenericModel.Shapes => GetTriangles;
+        //Shape[] GenericModel.Shapes => GetTriangles;
         Color GenericModel.Color { get => Color; set => Color = value; }
         Vector3 GenericModel.Position { get => Center; set => Center = value; }
         VertexPositionColorNormal[] GenericModel.Vertices
@@ -182,7 +182,7 @@ namespace SlimeGame.Models
         {
             for (int i = 0; i < Vertices.Count; i++)
             {
-                Debug.WriteLine($"Drawing vertex {i}/{Vertices.Count}");
+                // debug.writeline($"Drawing vertex {i}/{Vertices.Count}");
 
                 General.DrawObject(
                     spriteBatch,
