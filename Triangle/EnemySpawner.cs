@@ -6,7 +6,8 @@ using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
-using SlimeGame.Enemies;
+using SlimeGame.GameAsset;
+using SlimeGame.GameAssets.Enemies;
 
 namespace SlimeGame
 {
@@ -15,7 +16,7 @@ namespace SlimeGame
         static Random _rnd = new Random();
         (Type enemyType, int spawnWeight, float batchWeight)[] _variants;
         DateTime _enemySpawnTimer;
-        float _multiplier = 1f;
+        float _multiplier;
         float GetDistanceFromTarget => _rnd.Next(5000, 12000);
         float SpawnInterval => _rnd.Next(15, 35) * (1f / _multiplier);
         bool CanSpawnEnemies => _enemySpawnTimer < Game1.PlayingGameTime;
@@ -31,12 +32,12 @@ namespace SlimeGame
         {
             _variants = Variants;
         }
-        public void Update(ObjectManager objectManager)
+        public void Update(AssetManager assetManager)
         {
-            _multiplier = 1 + objectManager.Player.LevelManager.Level/5;
-            if (objectManager.Enemies.Count != 0 && !CanSpawnEnemies) return;
+            _multiplier = 0.2f + assetManager.Player.LevelManager.Level/5;
+            if (assetManager.Enemies.Count != 0 && !CanSpawnEnemies) return;
 
-            Vector3 center = objectManager.Player.Position;
+            Vector3 center = assetManager.Player.Position;
             Type[] newEnemies = GetNewEnemies();
 
             foreach (Type enemyType in newEnemies)
@@ -50,7 +51,7 @@ namespace SlimeGame
                 Vector3 spawnPos = center + direction * GetDistanceFromTarget;
 
                 Enemy enemy = (Enemy)Activator.CreateInstance(enemyType, spawnPos);
-                objectManager.Add(enemy);
+                assetManager.Add(enemy);
             }
 
             ResetSpawnTimer();

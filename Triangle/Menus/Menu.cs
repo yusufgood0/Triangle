@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.Input;
 
 namespace SlimeGame.Menus
 {
@@ -32,7 +33,7 @@ namespace SlimeGame.Menus
             _virtualScreen = virtualScreen;
             _menuButtons = menuButtons;
         }
-        public void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Rectangle drawRect, MouseState mouseState, Color buttonColor, Color textColor, int darkenedBox = -1)
+        public virtual void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Rectangle drawRect, MouseState mouseState, Color buttonColor, Color textColor, int darkenedBox = -1, string[] additionalText = null, Vector2[] additionalTextPos = null)
         {
 
             int width = spriteBatch.GraphicsDevice.PresentationParameters.BackBufferWidth;
@@ -51,6 +52,16 @@ namespace SlimeGame.Menus
             spriteBatch.Draw(screenTexture, _virtualScreen, drawRect, Color.White * 0.5f);
             spriteBatch.End();
 
+            if (additionalText != null)
+            {
+                spriteBatch.Begin(depthStencilState: spriteBatch.GraphicsDevice.DepthStencilState);
+                for (int i = 0; i < additionalText.Length; i++)
+                {
+                    spriteBatch.DrawString(font, additionalText[i], additionalTextPos[i], Color.White);
+                }
+                spriteBatch.End();
+            }
+
             foreach (var button in _menuButtons)
             {
                 button.Draw(spriteBatch, rectTexture, font, textColor, GetVirtualPosition(mouseState).ToPoint());
@@ -63,17 +74,17 @@ namespace SlimeGame.Menus
 
             screenTexture.Dispose();
         }
-        public int GetBehaviorValueOnClick(MouseState previousMouse, MouseState currentMouse)
+        public int GetBehaviorValueOnClick(MasterInput input)
         {
-            if (previousMouse.LeftButton != ButtonState.Released || currentMouse.LeftButton != ButtonState.Pressed)
+            if (input.OnLeftPress)
             {
-                return -1; // No click detected
+                return GetBehaviorValue(input);
             }
-            return GetBehaviorValue(previousMouse, currentMouse);
+            return -1; // No click detected
         }
-        public int GetBehaviorValue(MouseState previousMouse, MouseState currentMouse)
+        public int GetBehaviorValue(MasterInput input)
         {
-            Vector2 virtualPosition = GetVirtualPosition(currentMouse);
+            Vector2 virtualPosition = GetVirtualPosition(input.MouseState);
             foreach (var button in _menuButtons)
             {
                 if (button.IsHovered(virtualPosition))

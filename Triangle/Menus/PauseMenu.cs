@@ -12,6 +12,14 @@ namespace SlimeGame.Menus
 {
     internal class PauseMenu : Menu
     {
+        public enum Options
+        {
+            None = -1,
+            Resume = 0,
+            Settings = 1,
+            Title = 2
+        }
+
         public Menu Menu;
         static SpriteFont font;
         static Rectangle VirtualRect = new Rectangle(0, 0, 1000, 1000);
@@ -20,19 +28,20 @@ namespace SlimeGame.Menus
             {
                 new MenuButton(new Rectangle(new (300, 200*2), ButtonSize), font, (int) Options.Resume, Options.Resume.ToString(), defaultButtonColor),
                 new MenuButton(new Rectangle(new (300, 200*3), ButtonSize), font, (int) Options.Settings, Options.Settings.ToString(), defaultButtonColor),
-                new MenuButton(new Rectangle(new (300, 200*4), ButtonSize), font, (int) Options.Quit, Options.Quit.ToString(), defaultButtonColor),
+                new MenuButton(new Rectangle(new (300, 200*4), ButtonSize), font, (int) Options.Title, Options.Title.ToString(), defaultButtonColor),
             };
-    public PauseMenu(GraphicsDevice graphicsDevice, SpriteFont font, Rectangle menuParameters, Color defaultButtonColor) : 
-            base(graphicsDevice, menuParameters, VirtualRect, buttons(font, defaultButtonColor))
+        public PauseMenu(GraphicsDevice graphicsDevice, SpriteFont font, Rectangle menuParameters, Color defaultButtonColor) :
+                base(graphicsDevice, menuParameters, VirtualRect, buttons(font, defaultButtonColor))
         {
 
         }
-    public enum Options
+        public override void Draw(SpriteBatch spriteBatch, Texture2D rectTexture, SpriteFont font, Rectangle drawRect, MouseState mouseState, Color buttonColor, Color textColor, int darkenedBox = -1, string[] additionalText = null, Vector2[] additionalTextPos = null)
         {
-            None = -1,
-            Resume = 0,
-            Settings = 1,
-            Quit = 2
+            Vector2 titlePos = new(500 - font.MeasureString("Paused").X / 2, 100);
+            additionalText = new string[] { "Paused" };
+            additionalTextPos = new Vector2[] { titlePos };
+            base.Draw(spriteBatch, rectTexture, font, drawRect, mouseState, buttonColor, textColor, darkenedBox, additionalText, additionalTextPos);
         }
+        
     }
 }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Input;
+using SlimeGame.GameAsset;
 
 namespace SlimeGame.Input
 {
@@ -20,13 +21,13 @@ namespace SlimeGame.Input
     enum KeybindActions
     {
         AddElementFire = 0,
-        AddElementWater = 1,
-        AddElementEarth = 2,
-        AddElementAir = 3,
-        CastSpell = 4,
-        Jump = 5,
-        BackButton = 6,
-        GamePadClick = 7,
+        //AddElementWater = 1,
+        AddElementEarth = 1,
+        AddElementAir = 2,
+        CastSpell = 3,
+        Jump = 4,
+        BackButton = 5,
+        GamePadClick = 6,
     }
     internal class MasterInput
     {
@@ -37,7 +38,16 @@ namespace SlimeGame.Input
         public MouseState MouseState;
         public MouseState PreviousMouseState;
         public Dictionary<KeybindActions, Keybind> Keybinds = new();
+        public bool ControllerActive = false;
+        
         static readonly Buttons[] AllButtons = (Buttons[])Enum.GetValues(typeof(Buttons));
+        
+
+        public string GetKeyBindName(KeybindActions action)
+        {
+            Keybind keybind = Keybinds[action];
+            return ControllerActive ? keybind.GamepadButton.ToString() : keybind.KeyboardKey.ToString();
+        }
         public MasterInput()
         {
             //Initialize states to avoid null errors
@@ -47,14 +57,14 @@ namespace SlimeGame.Input
             PreviousGamePadState = GamePad.GetState(0);
 
             //Insert default keybinds
-            Keybinds.Add(KeybindActions.AddElementFire, new Keybind(Keys.D1, Buttons.B));
-            Keybinds.Add(KeybindActions.AddElementWater, new Keybind(Keys.D2, Buttons.X));
-            Keybinds.Add(KeybindActions.AddElementEarth, new Keybind(Keys.D3, Buttons.A));
-            Keybinds.Add(KeybindActions.AddElementAir, new Keybind(Keys.D4, Buttons.Y));
-            Keybinds.Add(KeybindActions.CastSpell, new Keybind(Keys.Q, Buttons.RightTrigger));
+            Keybinds.Add(KeybindActions.AddElementFire, new Keybind(Keys.E, Buttons.B));
+            //Keybinds.Add(KeybindActions.AddElementWater, new Keybind(Keys.D2, Buttons.X));
+            Keybinds.Add(KeybindActions.AddElementEarth, new Keybind(Keys.Q, Buttons.A));
+            Keybinds.Add(KeybindActions.AddElementAir, new Keybind(Keys.C, Buttons.Y));
+            Keybinds.Add(KeybindActions.CastSpell, new Keybind(Keys.R, Buttons.RightTrigger));
             Keybinds.Add(KeybindActions.BackButton, new Keybind(Keys.Escape, Buttons.Start));
-            Keybinds.Add(KeybindActions.Jump, new Keybind(Keys.Space, Buttons.LeftTrigger));
-            Keybinds.Add(KeybindActions.GamePadClick, new Keybind(Keys.None, Buttons.RightStick));
+            Keybinds.Add(KeybindActions.Jump, new Keybind(Keys.Space, Buttons.X));
+            Keybinds.Add(KeybindActions.GamePadClick, new Keybind(Keys.None, Buttons.A));
         }
         public void AddKeybind(KeybindActions Action, Keybind keybind)
         {
@@ -66,6 +76,15 @@ namespace SlimeGame.Input
             PreviousGamePadState = GamePadState;
             KeyboardState = Keyboard.GetState();
             GamePadState = GamePad.GetState(0);
+
+            if (PressedButtons().Length > 0)
+            {
+                ControllerActive = true;
+            }
+            else if (PressedKeys().Length > 0)
+            {
+                ControllerActive = false;
+            }
         }
         public InputType ActiveInputType()
         {

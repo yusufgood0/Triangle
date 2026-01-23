@@ -29,6 +29,7 @@ namespace SlimeGame.Generation
         private int _StartVerticesY = 0;
         private int _startX = 0;
         private int _startY = 0;
+
         public ChunkManager(int seed, Vector3 position, int renderDistance, float scalarValue, float tileSize, float heightScale)
         {
             _heightMap = new HeightMap(seed);
@@ -65,8 +66,13 @@ namespace SlimeGame.Generation
             return normalDir;
         }
         public bool IsPointAboveTerrain(Vector3 pos) => pos.Y > HeightAtPosition(pos);
+        //public float AccurateHeightAtPosition(Vector3 worldPos)
+        //{
+        //    return _heightMap.GetHeight(worldPos.X / TileSize, worldPos.Y / TileSize, NoiseScale, HeightScale);
+        //}
         public float HeightAtPosition(Vector3 worldPos)
         {
+
             var chunkIndex = ChunkIndex(worldPos);
 
             int localChunkX = chunkIndex.XIndex - _startX;
@@ -86,6 +92,10 @@ namespace SlimeGame.Generation
             int tileY = (int)MathF.Floor(
                 (worldPos.Z - chunkIndex.YIndex * chunkWorldSize) / TileSize
             );
+            if (chunk.HeightMap == null || tileX >= Chunk.ChunkSize || tileY >= Chunk.ChunkSize)
+            {
+                return worldPos.Y;
+            }
             return chunk.HeightMap[tileX, tileY];
             //return _heightMap.GetHeight(worldPos.X / TileSize, worldPos.Z / TileSize, NoiseScale, HeightScale);
         }
@@ -148,13 +158,13 @@ namespace SlimeGame.Generation
                                 );
 
                             Color color = colors[Heights[x, y] > seaLevel ? 1 : 0];
-                            color = Color.Lerp(
-                                Color.Yellow,
-                                Color.DarkGreen,
-                                _heightMap.GetNormalizedHeight(
-                                    newMapVertexPositionColorNormal[x, y].Position.X * 2,
-                                    newMapVertexPositionColorNormal[x, y].Position.Z * 2,
-                                    NoiseScale / 300));
+                            //color = Color.Lerp(
+                            //    Color.Yellow,
+                            //    Color.DarkGreen,
+                            //    _heightMap.GetNormalizedHeight(
+                            //        newMapVertexPositionColorNormal[x, y].Position.X * 2,
+                            //        newMapVertexPositionColorNormal[x, y].Position.Z * 2,
+                            //        NoiseScale / 300));
                             color.A = 255;
                             newMapVertexPositionColorNormal[x, y].Color = color;
                         }
@@ -193,7 +203,8 @@ namespace SlimeGame.Generation
                             newMapVertexPositionColorNormal[x, y].Normal = normalDir;
                         }
                     }
-                    //// Fix right edge (x = width - 1), copy from x - 1
+                    //// Fix 
+                    ///edge (x = width - 1), copy from x - 1
                     //for (int y = 1; y < height; y++)
                     //{
                     //    int x = width - 1;
@@ -438,9 +449,13 @@ namespace SlimeGame.Generation
             int localChunkX = chunkIndex.XIndex - _startX;
             int localChunkY = chunkIndex.YIndex - _startY;
 
-            if (localChunkX < 0 || localChunkX >= _loadedChunks.GetLength(0) ||
-                localChunkY < 0 || localChunkY >= _loadedChunks.GetLength(1))
-                throw new Exception("outside of loaded chunks"); // out of loaded chunks
+            int width = _loadedChunks.GetLength(0);
+            int height = _loadedChunks.GetLength(1);
+            if (localChunkX < 0 || localChunkX >= width ||
+                localChunkY < 0 || localChunkY >= height)
+            {
+                return (width / 2, height / 2); // returns the center in case of error
+            }
 
             // Determine the tile index inside that chunk
             float chunkWorldSize = Chunk.ChunkSize * TileSize;

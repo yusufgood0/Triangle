@@ -19,8 +19,7 @@ namespace SlimeGame.Menus
 
         static Rectangle VirtualRect = new Rectangle(0, 0, 1000, 1000);
 
-        
-        public SettingsMenu(GraphicsDevice graphicsDevice, SpriteFont font, MasterInput masterInput, Rectangle menuParameters, Color defaultButtonColor, MenuButton[] menuButtons) :
+        public SettingsMenu(GraphicsDevice graphicsDevice, SpriteFont font, Rectangle menuParameters, Color defaultButtonColor, MenuButton[] menuButtons) :
             base(graphicsDevice, menuParameters, VirtualRect, menuButtons)
         {
         }
@@ -30,7 +29,7 @@ namespace SlimeGame.Menus
             buttons.Add(new MenuButton(gamepadRect, font, buttons.Count, titleGamepad, color));
         }
 
-        public void Update(MasterInput input, MouseState mouseState, MouseState previousMouseState)
+        public void Update(MasterInput input)
         {
             KeybindActions actionToRebind;
             Buttons[] pressedButtons;
@@ -38,7 +37,7 @@ namespace SlimeGame.Menus
             Keys[] pressedKeys;
             Keys pressedKey;
 
-            if (SelectedMenuButton != -1 && !input.IsPressed(KeybindActions.GamePadClick))
+            if (SelectedMenuButton != -1 && (!input.IsPressed(KeybindActions.GamePadClick) || input.OnPress(KeybindActions.GamePadClick)))
             {
                 if (input.IsPressed(KeybindActions.BackButton))
                 {
@@ -78,9 +77,9 @@ namespace SlimeGame.Menus
                 }
                 return;
             }
-            else if (mouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed)
+            else if (input.OnLeftPress)
             {
-                SelectedMenuButton = GetBehaviorValue(previousMouseState, mouseState);
+                SelectedMenuButton = GetBehaviorValueOnClick(input);
                 // debug.writeline(SelectedMenuButton);
                 return;
             }

@@ -8,20 +8,24 @@ using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using SlimeGame.Enemies;
+using Microsoft.Xna.Framework.Media;
+using SlimeGame.Drawing;
+using SlimeGame.Drawing.Models;
+using SlimeGame.Drawing.Models.Shapes;
+using SlimeGame.Drawing.TextureDrawers;
 using SlimeGame.GameAsset;
 using SlimeGame.GameAsset.IFrames;
 using SlimeGame.GameAsset.Projectiles;
 using SlimeGame.GameAsset.SpriteSheets;
 using SlimeGame.GameAsset.StatusEffects;
+using SlimeGame.GameAssets;
+using SlimeGame.GameAssets.Enemies;
 using SlimeGame.Generation;
 using SlimeGame.Input;
 using SlimeGame.Menus;
-using SlimeGame.Models;
-using SlimeGame.Models.Shapes;
-using TextureArray;
 using static SlimeGame.GameAsset.SpriteSheets.SpriteSheetManager;
 namespace SlimeGame
 {
@@ -33,8 +37,6 @@ namespace SlimeGame
         private const bool _menusFillScreen = false;
         private readonly Color _defaultButtonColor = Color.DarkSlateBlue;
         private const float _FOV = MathHelper.Pi * 0.75f;
-        private readonly Point mapSize = new(400, 400);
-        private const int MapCellSize = 80;
 
         // Possibly adjustable gameplay constants
         private const float _sensitivity = 0.01f;
@@ -44,41 +46,50 @@ namespace SlimeGame
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private SpriteFont _spriteFont;
+        private SpriteFont _georgiaFont;
         private Texture2D _gradiantSquare; //for buttons
         private WorldDraw _worldDraw;
         private PauseMenu _pauseMenu;
-        private SettingsMenu _settingsMenu;
-        private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 40, 50));
+        private ElementKeybindMenu _settingsMenu;
+        private GameOverMenu _gameOverMenu;
+        private TitleScreenMenu _titleScreenMenu;
+        private CrystalBall _crystalBall = new CrystalBall(new Vector3(40, 50, 40));
+        private SpellBook _spellbook;
         private readonly MasterInput _masterInput = new MasterInput();
-        private readonly SpellBook _spellbook = new SpellBook(rnd);
         private readonly FramesPerSecondTimer _framesPerSecondTimer = new();
 
         // storing values and perameters to communicate between draw and other methods
         private Point _screenSize;
         private Rectangle _drawParemeters;
         private bool _previousIsMouseVisible = false;
-        private gamestates _currentGameState = gamestates.Playing;
+        private gamestates _currentGameState = gamestates.TitleScreen;
+        private bool _gameStarted;
         private const int _maxParticleCount = 1000;
 
         // for terrain drawing
-        readonly Color[] _chunkManagerColors = new Color[3];
+        readonly Color[] _chunkManagerColors = new Color[] { Color.Green };
 
         // only used for testing
         private List<GenericModel> _models = new List<GenericModel>();
         private Texture2D _chadGabeTexture;
-        private readonly bool _debugMode = false;
 
         // Game objects
-        ObjectManager _objectManager;
+        AssetManager _assetManager;
 
         // Drawing hearts for health
-        SpriteSheetManager _spriteSheetManager;
         private (int X, int Y) Offset = (416, 209);
         private (int X, int Y) PixelSize = (16, 15);
         private (int X, int Y) MaxPixel = (5, 3);
 
         // Ui Manager
         UIManager _UIManager;
+
+        // explosionSound effects
+        private SoundEffectInstance[] _explosionSfx;
+        private SoundEffectInstance RandomExpSfx => _explosionSfx != null && _explosionSfx.Length > 0 ? _explosionSfx[rnd.Next(0, _explosionSfx.Length)] : null;
+
+        // Music
+        private Song _music;
 
         // Day/Night cycle length in minutes
         float DayLength = 10f;
@@ -88,7 +99,9 @@ namespace SlimeGame
         private bool Paused { get => _currentGameState == gamestates.Paused; set => _currentGameState = value ? gamestates.Paused : _currentGameState; }
         private bool SettingsMenu { get => _currentGameState == gamestates.SettingsMenu; set => _currentGameState = value ? gamestates.SettingsMenu : _currentGameState; }
         private bool LevelUpMenu { get => _currentGameState == gamestates.LevelUpMenu; set => _currentGameState = value ? gamestates.LevelUpMenu : _currentGameState; }
-        private enum gamestates { Playing, Paused, SettingsMenu, LevelUpMenu }
+        private bool GameOver { get => _currentGameState == gamestates.GameOver; set => _currentGameState = value ? gamestates.GameOver : _currentGameState; }
+        private bool TitleScreen { get => _currentGameState == gamestates.TitleScreen; set => _currentGameState = value ? gamestates.TitleScreen : _currentGameState; }
+        private enum gamestates { Playing, Paused, SettingsMenu, LevelUpMenu, GameOver, TitleScreen }
 
         public Game1()
         {
@@ -102,9 +115,8 @@ namespace SlimeGame
         {
 
             /* resizes screen */
-
-            _graphics.PreferredBackBufferWidth = _screenSize.X = _graphics.IsFullScreen ? GraphicsDevice.Adapter.CurrentDisplayMode.Width : 800;
-            _graphics.PreferredBackBufferHeight = _screenSize.Y = _graphics.IsFullScreen ? GraphicsDevice.Adapter.CurrentDisplayMode.Height : 800;
+            _graphics.PreferredBackBufferWidth = _screenSize.X = _graphics.IsFullScreen ? GraphicsDevice.Adapter.CurrentDisplayMode.Width : 1200;
+            _graphics.PreferredBackBufferHeight = _screenSize.Y = _graphics.IsFullScreen ? GraphicsDevice.Adapter.CurrentDisplayMode.Height : 860;
             _graphics.ApplyChanges();
 
             /* Initilizes blank texture as a 1x1 white pixel texture 
@@ -141,17 +153,80 @@ namespace SlimeGame
 
             base.Initialize();
         }
-        (VertexPositionColorNormalTexture[] Vertices, int[] Indices, BoundingBox BoundingBox) tempMesh;
         protected override void LoadContent()
         {
+            _gameStarted = false;
+
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             _spriteFont = Content.Load<SpriteFont>("ExperienceFont");
+            _georgiaFont = Content.Load<SpriteFont>("Georgia");
             _gradiantSquare = Content.Load<Texture2D>("GradiantSquare");
             _chadGabeTexture = Content.Load<Texture2D>("CHAD GABE");
             Texture2D Elements = Content.Load<Texture2D>("Elements");
+            (string Name, float Volume)[] sfxToLoad = new (string Name, float Volume)[]
+                {
+                    //("Explosion", .03f),
+                    ("Explosion (1)", .03f),
+                    ("Explosion (2)", .03f),
+                    ("Explosion (3)", .03f),
+                    //("Explosion (4)", .03f),
+                    //("Explosion (5)", .03f),
+                };
+            _explosionSfx = new SoundEffectInstance[sfxToLoad.Length];
+            for (int i = 0; i < sfxToLoad.Length; i++)
+            {
+                SoundEffect soundEffect = Content.Load<SoundEffect>(sfxToLoad[i].Name);
+                _explosionSfx[i] = soundEffect.CreateInstance();
+                _explosionSfx[i].Volume = sfxToLoad[i].Volume;
+            }
+
             Slime.LoadContent(Content);
 
-            Vector2 MapCenter = new Vector2(mapSize.X / 2 * MapCellSize, mapSize.Y / 2 * MapCellSize);
+            // Error setup
+            Vector2 errorMessagePosStart = new(_screenSize.X / 2, _screenSize.Y * 0.1f);
+            Vector2 errorMessagePosEnd = new(_screenSize.X / 2, _screenSize.Y * -0.1f);
+
+            SoundEffectInstance errorSfx = Content.Load<SoundEffect>("explosion").CreateInstance();
+            errorSfx.Volume = 0.15f;
+
+            ErrorMessage.Init(_spriteBatch, _spriteFont, errorMessagePosStart, errorMessagePosEnd, errorSfx);
+
+            // Element display 
+            TripleElementDisplay.Init(Elements);
+
+            // Music
+            _music = Content.Load<Song>("bean");
+            MediaPlayer.Volume = 0.05f;
+            MediaPlayer.Play(_music);
+
+
+            _spellbook = new SpellBook(rnd, Content);
+
+            /* Determine player spawn position */
+            var PlayerPos = Vector3.Zero;
+            var ChunkManager = new ChunkManager(rnd.Next(Int32.MinValue, Int32.MaxValue), PlayerPos, 6, 3, 300, 15000f);
+            /* Initilize player object */
+            _assetManager =
+                new AssetManager(
+                new Player(
+                    PlayerPos,
+                    new Camera(_screenSize.Y / _screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 15000, _FOV * 1.1f),
+                    rnd,
+                    _screenSize,
+                    2.5f / 100f,
+                    10f / 100f,
+                    Content.Load<Texture2D>("PixelScrollNoBG"),
+                    _georgiaFont,
+                    ChunkManager
+                    ), //bloats FOV to ensure no clipping on camera
+                ChunkManager
+                );
+            _assetManager.Player.Update(_masterInput, _assetManager.ChunkManager); // update once to proccess correct player bounds and avoid terrain clipping
+           
+            /* Initialize Map Vertices */
+            _assetManager.ChunkManager._MapVertexPositionColorNormals = _assetManager.ChunkManager.GetVerticesAsync(_chunkManagerColors, _assetManager.Player.EyePos).GetAwaiter().GetResult();
+
+            
             if (_menusFillScreen)
             {
                 _drawParemeters = new Rectangle(0, 0, _screenSize.X, _screenSize.Y);
@@ -164,31 +239,11 @@ namespace SlimeGame
 
                 _drawParemeters = new Rectangle(paddingx, paddingy, screenWidthHeight, screenWidthHeight);
             }
+
             _pauseMenu = new PauseMenu(GraphicsDevice, _spriteFont, _drawParemeters, _defaultButtonColor);
             _settingsMenu = new ElementKeybindMenu(GraphicsDevice, _spriteFont, _masterInput, _drawParemeters, _defaultButtonColor);
-
-            int p1x = 0, p1y = 0, p2x = 0, p2y = 0, p3x = 0, p3y = 0, p4x = 0, p4y = 0;
-
-            /* Determine player spawn position */
-            var PlayerPos = Vector3.Zero;
-
-            /* Initilize player object */
-            _objectManager =
-                new ObjectManager(
-                new Player(
-                    PlayerPos,
-                    new Camera(_screenSize.Y / _screenSize.X, PlayerPos, Vector3.Zero, Vector3.Down, 15000, _FOV * 1.1f),
-                    rnd,
-                    _screenSize,
-                    0.05f,
-                    0.1f,
-                    Content.Load<Texture2D>("PixelScrollNoBG")
-                    ), //bloats FOV to ensure no clipping on camera
-                new ChunkManager(rnd.Next(Int32.MinValue, Int32.MaxValue), PlayerPos, 6, 3, 300, 15000f)
-                );
-
-            /* Initialize Map Vertices */
-            _objectManager.ChunkManager._MapVertexPositionColorNormals = _objectManager.ChunkManager.GetVerticesAsync(_chunkManagerColors, _objectManager.Player.EyePos).GetAwaiter().GetResult();
+            _gameOverMenu = new GameOverMenu(GraphicsDevice, _spriteFont, _drawParemeters, _defaultButtonColor, _assetManager.Player.LevelManager);
+            _titleScreenMenu = new TitleScreenMenu(GraphicsDevice, _spriteFont, _drawParemeters, _defaultButtonColor);
 
             /* Initilize world draw object */
             _worldDraw = new WorldDraw(
@@ -227,7 +282,7 @@ namespace SlimeGame
             TextureHolder[] elementDisplay = new TextureHolder[elementDisplayCount];
             {
                 int spacing = 10;
-                (int XSize, int Ysize) = (60, 60);
+                (int XSize, int Ysize) = (120, 120);
                 (int Xoffset, int Yoffset) = (_screenSize.X - (spacing + XSize) * elementDisplayCount, spacing);
                 for (int i = 0; i < elementDisplayCount; i++)
                 {
@@ -240,6 +295,7 @@ namespace SlimeGame
                         );
                 }
             }
+
             Slider expSlider;
             {
                 int xpos, ypos;
@@ -250,7 +306,7 @@ namespace SlimeGame
                 height *= _screenSize.Y;
 
                 xpos = (int)(_screenSize.X * 0.5f - width / 2);
-                ypos = (int)(_screenSize.Y * 0.75f - height / 2);
+                ypos = (int)(_screenSize.Y * 0.8f - height / 2);
 
                 expSlider = new Slider(
                     new Rectangle(xpos, ypos, (int)width, (int)height),
@@ -259,7 +315,7 @@ namespace SlimeGame
                     Color.Green
                     );
             }
-
+            Texture2D notches = Content.Load<Texture2D>("Notches");
             _UIManager = new UIManager(
                 elementDisplay,
                 healthDisplay,
@@ -271,12 +327,12 @@ namespace SlimeGame
                     Color.LightGreen
                     ),
                 _spriteFont,
-                _spriteBatch
+                _spriteBatch,
+                notches
                 );
 
             IFrameInstance.AddIFrame(new IFrameInstance(new object(), 3, IFrameType.Universal));
         }
-        bool temp = false;
         protected override void Update(GameTime gameTime)
         {
             if (_masterInput.OnPress(Buttons.Back) || _masterInput.OnPress(Keys.Escape) && _masterInput.OnPress(Keys.LeftAlt))
@@ -287,28 +343,23 @@ namespace SlimeGame
             _previousIsMouseVisible = IsMouseVisible;
             _masterInput.UpdateStates();
             IsMouseVisible = !Playing || !IsActive;
+            if (!(MediaPlayer.State == MediaState.Playing))
+            {
+                MediaPlayer.MovePrevious();
+            }
+
+            RenewMapVerticesAsync();
 
             _UIManager.Update(
-                _objectManager.Player,
+                _assetManager.Player,
                 _spellbook,
-                _objectManager.Player.LevelManager,
                 0.75f
                 );
 
-
-            if (_masterInput.OnPress(Keys.Enter))
+            if (_assetManager.Player.Health <= 0)
             {
-                foreach (var effect in StatusEffect._activeEffects)
-                {
-                    Debug.WriteLine(effect.GetType().ToString());
-
-                }
+                GameOver = true;
             }
-
-            //foreach (var modelIndex in Enumerable.Rang
-            //{
-            //    _models[modelIndex].ChangeRotation(0.01f, 1f);
-            //}
 
             if (_masterInput.OnPress(KeybindActions.GamePadClick))
             {
@@ -330,8 +381,14 @@ namespace SlimeGame
                 Point newMousePos = _masterInput.MouseState.Position + controllerOffset.ToPoint();
                 Mouse.SetPosition(newMousePos.X, newMousePos.Y);
             }
-            else if (Playing)
+            if (Playing)
             {
+                if (controllerOffset != Vector2.Zero)
+                {
+                    _assetManager.Player.AimAssist(_assetManager);
+                }
+
+                _gameStarted = true;
                 PlayingGameTime = PlayingGameTime.AddSeconds((float)gameTime.ElapsedGameTime.TotalSeconds);
                 if (!IsActive)
                 {
@@ -340,85 +397,85 @@ namespace SlimeGame
 
                 if (_masterInput.OnPress(KeybindActions.BackButton))
                 {
-                    _currentGameState = gamestates.Paused;
+                    Paused = true;
                 }
-                _objectManager.PlayUpdate(_masterInput);
-                _objectManager.Player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, _screenSize, _sensitivity);
+                _assetManager.PlayUpdate(_masterInput);
+                _assetManager.Player.SafeControlAngleWithMouse(_previousIsMouseVisible, IsMouseVisible, _screenSize, _sensitivity);
 
                 // Update player, and animates heart rotate after full heal
-                if (_objectManager.Player.Update(_masterInput, _objectManager.ChunkManager) && _objectManager.Player.Health % 1 == 0)
+                if (_assetManager.Player.Update(_masterInput, _assetManager.ChunkManager) && _assetManager.Player.Health % 1 == 0)
                 {
-                    _UIManager.RotateLastHeart((int)_objectManager.Player.Health);
+                    _UIManager.RotateLastHeart((int)_assetManager.Player.Health);
                 }
 
-                StatusEffect.UpdateAllEffects(_objectManager);
+                StatusEffect.UpdateAllEffects(_assetManager);
                 IFrameInstance.CullExpiredIframes();
 
-                RenewMapVerticesAsync();
-                if (_objectManager.Player.LevelManager.LevelUpMenu)
+                if (_assetManager.Player.LevelManager.LevelUpMenu)
                 {
-                    _currentGameState = gamestates.LevelUpMenu;
+                    LevelUpMenu = true;
                 }
-                foreach (Enemy enemy in _objectManager.Enemies)
+                foreach (Enemy enemy in _assetManager.Enemies)
                 {
-                    foreach (Enemy enemy2 in _objectManager.Enemies)
+                    foreach (Enemy enemy2 in _assetManager.Enemies)
                     {
                         if (!enemy.Equals(enemy2) && enemy.Hitbox.Intersects(enemy2.Hitbox))
                         {
-                            enemy.Knockback(enemy2.Position - enemy.Position, 0);
+                            enemy.Knockback(enemy.Position - enemy2.Position, 10);
                         }
                     }
                 }
-                for (int i = 0; i < _objectManager.Particles.Count; i++)
+                for (int i = 0; i < _assetManager.Particles.Count; i++)
                 {
-                    var particle = _objectManager.Particles[i];
+                    var particle = _assetManager.Particles[i];
                     int LifeTime = (int)(Game1.PlayingGameTime - particle.CreationTime).TotalSeconds;
                     if (LifeTime > 1)
                     {
-                        _objectManager.Particles.RemoveAt(i);
+                        _assetManager.Particles.RemoveAt(i);
                         i--;
                         continue;
                     }
-                    _objectManager.Particles[i] = _objectManager.Particles[i].Float(20, rnd);
+                    _assetManager.Particles[i] = _assetManager.Particles[i].Float(20, rnd);
                 }
-                for (int i = 0; i < _objectManager.Enemies.Count; i++)
+                for (int i = 0; i < _assetManager.Enemies.Count; i++)
                 {
-                    _objectManager.Enemies[i].Update(_objectManager, rnd);
-                    if (Vector3.DistanceSquared(_objectManager.Enemies[i].Position, _objectManager.Player.Position) > 20000 * 20000)
+                    _assetManager.Enemies[i].Update(_assetManager, rnd);
+                    if (Vector3.DistanceSquared(_assetManager.Enemies[i].Position, _assetManager.Player.Position) > 20000 * 20000)
                     {
-                        _objectManager.Enemies.RemoveAt(i);
+                        _assetManager.Enemies.RemoveAt(i);
                         i--;
                         continue;
                     }
-                    if (_objectManager.Enemies[i].Hurtbox.Intersects(_objectManager.Player.HitBox))
+                    if (_assetManager.Enemies[i].Hurtbox.Intersects(_assetManager.Player.HitBox))
                     {
                         // Player is hit by enemy
-                        _objectManager.Enemies[i].EnemyHitPlayer(_objectManager.Player);
+                        _assetManager.Enemies[i].EnemyHitPlayer(_assetManager.Player);
 
                     }
                 }
-                for (int i = 0; i < _objectManager.Projectiles.Count; i++)
+                for (int i = 0; i < _assetManager.Projectiles.Count; i++)
                 {
-                    var projectile = _objectManager.Projectiles[i];
-                    if (projectile.Move(_objectManager.ChunkManager))
+                    var projectile = _assetManager.Projectiles[i];
+                    if (projectile.Move(_assetManager.ChunkManager))
                     {
-                        _objectManager.Particles.AddRange(projectile.GetPixelDeathParticles(rnd, _objectManager));
-                        _objectManager.Projectiles.Remove(projectile);
+                        _assetManager.Particles.AddRange(projectile.GetPixelDeathParticles(rnd, _assetManager));
+                        _assetManager.PlaySound(RandomExpSfx, projectile.Position, projectile.Velocity);
+                        _assetManager.Projectiles.Remove(projectile);
                         i--;
                         continue;
                     }
                     bool HitSomething = false;
                     if (projectile.TargetType == TargetType.Enemy)
                     {
-                        for (int j = 0; j < _objectManager.Enemies.Count; j++)
+                        for (int j = 0; j < _assetManager.Enemies.Count; j++)
                         {
-                            var enemy = _objectManager.Enemies[j];
+                            var enemy = _assetManager.Enemies[j];
                             if (enemy.Hitbox.Intersects(projectile.HitBox))
                             {
                                 HitSomething = true;
                                 if (projectile.Persistant)
                                 {
-                                    if (enemy.EnemyIsHit(Vector3.Zero, projectile.HitDamage, _objectManager))
+                                    if (enemy.EnemyIsHit(Vector3.Zero, projectile.HitDamage, _assetManager))
                                     {
                                         j--;
                                         continue;
@@ -427,7 +484,7 @@ namespace SlimeGame
                                 }
                                 else
                                 {
-                                    if (enemy.EnemyIsHit(enemy.Position - projectile.Position, projectile.HitDamage, _objectManager))
+                                    if (enemy.EnemyIsHit(enemy.Position - projectile.Position, projectile.HitDamage, _assetManager))
                                     {
                                         j--;
                                         continue;
@@ -438,7 +495,7 @@ namespace SlimeGame
                     }
                     else if (projectile.TargetType == TargetType.Player)
                     {
-                        if (projectile.HitBox.Intersects(_objectManager.Player.HitBox))
+                        if (projectile.HitBox.Intersects(_assetManager.Player.HitBox))
                         {
                             // Player hit logic
                             HitSomething = true;
@@ -446,27 +503,28 @@ namespace SlimeGame
                     }
                     if (!projectile.Persistant && HitSomething)
                     {
-                        _objectManager.Particles.AddRange(projectile.GetPixelDeathParticles(rnd, _objectManager));
-                        _objectManager.Projectiles.Remove(projectile);
+                        _assetManager.Particles.AddRange(projectile.GetPixelDeathParticles(rnd, _assetManager));
+                        _assetManager.Projectiles.Remove(projectile);
                         i--;
                         continue;
                     }
 
-                    projectile.AddParticles(_objectManager.Particles, rnd);
+                    projectile.AddParticles(_assetManager.Particles, rnd);
                 }
-                while (_objectManager.Particles.Count > _maxParticleCount)
+                while (_assetManager.Particles.Count > _maxParticleCount)
                 {
-                    _objectManager.Particles.RemoveAt(rnd.Next(0, _objectManager.Particles.Count()));
+                    _assetManager.Particles.RemoveAt(rnd.Next(0, _assetManager.Particles.Count()));
                 }
 
 
                 bool AddedElement = false;
                 int currentElements = _spellbook.ElementsCount;
 
-                if (_masterInput.OnLeftPress)
+                if (_masterInput.OnPress(Keys.V) && _masterInput.IsPressed(Keys.L))
                 {
-                    //_objectManager.ChunkManager.OffsetHeightAtPosition(_objectManager.Player.Position, -10000, ref _objectManager.ChunkManager.VertexPositionColorNormals);
-                    _objectManager.Player.LevelManager.CheatAllRewards(_objectManager.Player);
+                    //_assetManager.ChunkManager.OffsetHeightAtPosition(_assetManager.Player.Position, -10000, ref _assetManager.ChunkManager.VertexPositionColorNormals);
+                    _assetManager.Player.LevelManager.AddExp(_assetManager.Player.LevelManager.ExpToNextLevel);
+                    ErrorMessage.New("CHEATER!");
                 }
 
                 if (_masterInput.OnPress(KeybindActions.AddElementFire))
@@ -484,14 +542,14 @@ namespace SlimeGame
                     _spellbook.AddElement(Element.Earth);
                     AddedElement = true;
                 }
-                if (_masterInput.OnPress(KeybindActions.AddElementWater))
-                {
-                    _spellbook.AddElement(Element.Water);
-                    AddedElement = true;
-                }
+                //if (_masterInput.OnPress(KeybindActions.AddElementWater))
+                //{
+                //    _spellbook.AddElement(Element.Water);
+                //    AddedElement = true;
+                //}
                 if (_masterInput.IsPressed(KeybindActions.CastSpell) || currentElements == 3 && AddedElement)
                 {
-                    _spellbook.TryCast(_objectManager);
+                    _spellbook.TryCast(_assetManager);
                     //_spellbook.ClearElements();
                 }
             }
@@ -499,10 +557,10 @@ namespace SlimeGame
             {
                 if (_masterInput.OnPress(KeybindActions.BackButton))
                 {
-                    _currentGameState = gamestates.Playing;
+                    Playing = true;
                 }
 
-                PauseMenu.Options input = (PauseMenu.Options)_pauseMenu.GetBehaviorValueOnClick(_masterInput.PreviousMouseState, _masterInput.MouseState);
+                PauseMenu.Options input = (PauseMenu.Options)_pauseMenu.GetBehaviorValueOnClick(_masterInput);
 
                 switch (input)
                 {
@@ -512,8 +570,9 @@ namespace SlimeGame
                     case PauseMenu.Options.Settings:
                         _currentGameState = gamestates.SettingsMenu;
                         break;
-                    case PauseMenu.Options.Quit:
-                        Exit();
+                    case PauseMenu.Options.Title:
+                        LoadContent();
+                        _currentGameState = gamestates.TitleScreen;
                         break;
                 }
 
@@ -522,30 +581,55 @@ namespace SlimeGame
             {
                 if (_masterInput.OnPress(KeybindActions.BackButton))
                 {
-                    _currentGameState = gamestates.Playing;
+                    _currentGameState = _gameStarted ? gamestates.Paused : gamestates.TitleScreen;
                 }
-                _settingsMenu.Update(_masterInput, _masterInput.MouseState, _masterInput.PreviousMouseState);
+                _settingsMenu.Update(_masterInput);
             }
             else if (LevelUpMenu)
             {
-                _objectManager.Player.LevelManager.UpdateLevelUpMenu(_masterInput, _objectManager.Player);
-                if (!_objectManager.Player.LevelManager.LevelUpMenu)
+                _assetManager.Player.LevelManager.UpdateLevelUpMenu(_masterInput, _assetManager.Player);
+                if (!_assetManager.Player.LevelManager.LevelUpMenu)
                 {
-                    _currentGameState = gamestates.Playing;
+                    Playing = true;
                 }
             }
-            if (_masterInput.OnPress(Keys.R))
+            else if (GameOver)
             {
-                LoadContent();
+                switch ((GameOverMenu.GameOverMenuStates)_gameOverMenu.GetBehaviorValueOnClick(_masterInput))
+                {
+                    case GameOverMenu.GameOverMenuStates.GoToTitle:
+                        LoadContent();
+                        TitleScreen = true;
+                        break;
+                    case GameOverMenu.GameOverMenuStates.Quit:
+                        Exit();
+                        break;
+                }
             }
+            else if (TitleScreen)
+            {
+                switch ((TitleScreenMenu.TitleScreenMenuStates)_titleScreenMenu.GetBehaviorValueOnClick(_masterInput))
+                {
+                    case TitleScreenMenu.TitleScreenMenuStates.Play:
+                        Playing = true;
+                        break;
+                    case TitleScreenMenu.TitleScreenMenuStates.Settings:
+                        SettingsMenu = true;
+                        break;
+                    case TitleScreenMenu.TitleScreenMenuStates.Quit:
+                        Exit();
+                        break;
+                }
+            }
+
 
             base.Update(gameTime);
         }
         async void RenewMapVerticesAsync()
         {
-            if (_objectManager.ChunkManager.TryTranslateAndGetNewLoadedChunks(_objectManager.Player.EyePos))
+            if (_assetManager.ChunkManager.TryTranslateAndGetNewLoadedChunks(_assetManager.Player.EyePos))
             {
-                _objectManager.ChunkManager._MapVertexPositionColorNormals = await _objectManager.ChunkManager.GetVerticesAsync(_chunkManagerColors, _objectManager.Player.EyePos);
+                _assetManager.ChunkManager._MapVertexPositionColorNormals = await _assetManager.ChunkManager.GetVerticesAsync(_chunkManagerColors, _assetManager.Player.EyePos);
             }
         }
         protected override void Draw(GameTime gameTime)
@@ -559,12 +643,12 @@ namespace SlimeGame
                 doubleSided: true,
                 texture: null,
                 view: Matrix.CreateLookAt(
-                    _objectManager.Player.EyePos,  // camera position (looking toward origin)
-                    _objectManager.Player.EyePos + _objectManager.Player.dirVector,          // target
+                    _assetManager.Player.EyePos,  // camera position (looking toward origin)
+                    _assetManager.Player.EyePos + _assetManager.Player.dirVector,          // target
                     Vector3.Down             // up vector
                 ),
                 projection: Matrix.CreatePerspectiveFieldOfView(
-                    _FOV + 0.5f * (Math.Clamp(_objectManager.Player.SpeedEffectMultiplierReverse, 0, 0.3f)), // FOV
+                    _FOV + 0.5f * (Math.Clamp(_assetManager.Player.SpeedEffectMultiplierReverse, 0, 0.3f)), // FOV
                     GraphicsDevice.Viewport.AspectRatio, // Aspect Ratio
                     0.1f, // Near Plane
                     15000f // Far Plane
@@ -573,18 +657,18 @@ namespace SlimeGame
 
             List<GenericModel> testModels = new List<GenericModel>(_models);
             List<Shape> visibleShapes = new();
-            BoundingFrustum viewFrustrum = _objectManager.Player.PlayerCamera.Frustum;
+            BoundingFrustum viewFrustrum = _assetManager.Player.PlayerCamera.Frustum;
 
             // Get merged heightmap from ChunkManager
-            (int totalWidth, int totalHeight) = _objectManager.ChunkManager.MergeLoadedChunksHeightMapDimensions;
+            (int totalWidth, int totalHeight) = _assetManager.ChunkManager.MergeLoadedChunksHeightMapDimensions;
 
             // Draw the terrain
-            if (_objectManager.ChunkManager._MapVertexPositionColorNormals != null)
+            if (_assetManager.ChunkManager._MapVertexPositionColorNormals != null)
             {
                 VertexPositionColorNormal[] vertexPositionColorNormals = new VertexPositionColorNormal[totalWidth * totalHeight];
                 Vector2 worldOffset = new Vector2(
-                    _objectManager.ChunkManager._loadedChunks[0, 0].XIndex * Chunk.ChunkSize * _objectManager.ChunkManager.TileSize,
-                    _objectManager.ChunkManager._loadedChunks[0, 0].YIndex * Chunk.ChunkSize * _objectManager.ChunkManager.TileSize
+                    _assetManager.ChunkManager._loadedChunks[0, 0].XIndex * Chunk.ChunkSize * _assetManager.ChunkManager.TileSize,
+                    _assetManager.ChunkManager._loadedChunks[0, 0].YIndex * Chunk.ChunkSize * _assetManager.ChunkManager.TileSize
                 );
 
                 for (int y = 0; y < totalHeight; y++)
@@ -592,7 +676,7 @@ namespace SlimeGame
                     for (int x = 0; x < totalWidth; x++)
                     {
                         int index = y * totalWidth + x;
-                        vertexPositionColorNormals[index] = _objectManager.ChunkManager._MapVertexPositionColorNormals[x, y];
+                        vertexPositionColorNormals[index] = _assetManager.ChunkManager._MapVertexPositionColorNormals[x, y];
                     }
                 }
 
@@ -643,9 +727,9 @@ namespace SlimeGame
                 }
             }
 
-            for (int i = 0; i < _objectManager.Projectiles.Count; i++)
+            for (int i = 0; i < _assetManager.Projectiles.Count; i++)
             {
-                GenericModel model = _objectManager.Projectiles[i].Model;
+                GenericModel model = _assetManager.Projectiles[i].Model;
                 BoundingBox boundingBox = model.BoundingBox;
                 bool inView = ContainmentType.Disjoint != viewFrustrum.Contains(boundingBox);
                 if (inView)
@@ -654,7 +738,7 @@ namespace SlimeGame
                 }
             }
 
-            foreach (Enemy enemy in _objectManager.Enemies)
+            foreach (Enemy enemy in _assetManager.Enemies)
             {
                 bool inView = viewFrustrum.Contains(enemy.Hitbox) != ContainmentType.Disjoint;
                 if (inView)
@@ -670,7 +754,7 @@ namespace SlimeGame
                 //    enemy.BoundingBox.Max,
                 //    Color.Red * 0.5F
                 //    );
-                visibleShapes.AddRange(enemy.GetHealthBar(_objectManager.Player));
+                visibleShapes.AddRange(enemy.GetHealthBar(_assetManager.Player));
             }
 
             foreach (GenericModel model in testModels)
@@ -682,11 +766,11 @@ namespace SlimeGame
                     model.Draw(_worldDraw, GraphicsDevice);
                 }
             }
-            _objectManager.DrawAllTemporaryObjects(_worldDraw, viewFrustrum, GraphicsDevice);
+            _assetManager.DrawAllTemporaryObjects(_worldDraw, viewFrustrum, GraphicsDevice);
 
             /* Draw and rotate the Crystal Ball */
-            _crystalBall.SetPosition(_objectManager.Player);
-            _crystalBall.UpdateHighlights(_spellbook, _objectManager.Player);
+            _crystalBall.SetPosition(_assetManager.Player);
+            _crystalBall.UpdateHighlights(_spellbook, _assetManager.Player);
             _crystalBall.Draw(_spellbook, _worldDraw, GraphicsDevice);
 
             /* Draw Shapes */
@@ -697,7 +781,7 @@ namespace SlimeGame
                 Vector3 shapePos = shape.Position;
 
                 Color color = shape.Color;
-                //color = shape.ApplyShading(shapePos - _objectManager.Player.EyePos, color, Color.LightGoldenrodYellow);
+                //color = shape.ApplyShading(shapePos - _assetManager.Player.EyePos, color, Color.LightGoldenrodYellow);
 
                 if (shape is Square)
                 {
@@ -713,7 +797,7 @@ namespace SlimeGame
             }
 
             /* Draw Particles */
-            foreach (var particle in _objectManager.Particles)
+            foreach (var particle in _assetManager.Particles)
             {
                 _worldDraw.DrawTriangle(GraphicsDevice, particle.P1, particle.P2, particle.P3, particle.Color);
             }
@@ -747,7 +831,8 @@ namespace SlimeGame
                 Debug.WriteLine("FPS: " + _framesPerSecondTimer.FPS);
             }
 
-            _UIManager.Draw(_gradiantSquare);
+            _UIManager.Draw(_gradiantSquare, _masterInput);
+            ErrorMessage.DrawAll();
 
             if (Paused)
             {
@@ -759,7 +844,15 @@ namespace SlimeGame
             }
             else if (LevelUpMenu)
             {
-                _objectManager.Player.LevelManager.DrawLevelUpMenu(_spriteBatch, _spriteFont);
+                _assetManager.Player.LevelManager.DrawLevelUpMenu(_spriteBatch, _spriteFont, _georgiaFont, _screenSize);
+            }
+            else if (GameOver)
+            {
+                _gameOverMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, _drawParemeters, _masterInput.MouseState, Color.Red, Color.White);
+            }
+            else if (TitleScreen)
+            {
+                _titleScreenMenu.Draw(_spriteBatch, _gradiantSquare, _spriteFont, _drawParemeters, _masterInput.MouseState, Color.Red, Color.White);
             }
             //GraphicsDevice.RasterizerState = RasterizerState.CullNone;
             base.Draw(gameTime);

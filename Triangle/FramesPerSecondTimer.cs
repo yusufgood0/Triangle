@@ -9,7 +9,7 @@ namespace SlimeGame
 {
     internal class FramesPerSecondTimer
     {
-        DateTime startTime;
+        DateTime startTime = Game1.PlayingGameTime;
         int callCount;
         public int FPS = 0;
         public void CallTimer()
@@ -18,10 +18,10 @@ namespace SlimeGame
         }
         public bool CheckForReset()
         {
-            if (RunTime >= 1)
+            if (startTime <= Game1.PlayingGameTime)
             {
                 FPS = callCount;
-                startTime = Game1.PlayingGameTime;
+                startTime = startTime.AddSeconds(1);
                 callCount = 0;
                 return true;
             }
@@ -33,6 +33,6 @@ namespace SlimeGame
             return CheckForReset();
         }
 
-        double RunTime { get => (Game1.PlayingGameTime - startTime).TotalSeconds; }
+        //double RunTime { get => (Game1.PlayingGameTime - startTime).TotalSeconds; }
     }
 }
